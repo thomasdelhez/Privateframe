@@ -2,12 +2,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
+from app.admin.router import router as admin_router
 from app.auth.router import router as auth_router
+from app.billing.router import router as billing_router
 from app.chat.router import router as chat_router
 from app.core.config import get_settings
 from app.core.database import init_db
 from app.posts.router import router as posts_router
 from app.profiles.router import router as profiles_router
+from app.reports.router import router as reports_router
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, docs_url=None, redoc_url=None)
@@ -34,7 +37,10 @@ def health() -> dict[str, str]:
 app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(profiles_router, prefix=settings.api_prefix)
 app.include_router(posts_router, prefix=settings.api_prefix)
+app.include_router(billing_router, prefix=settings.api_prefix)
 app.include_router(chat_router, prefix=settings.api_prefix)
+app.include_router(reports_router, prefix=settings.api_prefix)
+app.include_router(admin_router, prefix=settings.api_prefix)
 
 
 @app.get("/docs", include_in_schema=False)
