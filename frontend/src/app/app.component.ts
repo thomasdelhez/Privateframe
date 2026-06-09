@@ -11,10 +11,9 @@ import { SessionService } from './core/session.service';
       <a routerLink="/" class="brand">PrivateFrame</a>
       <nav>
         <a routerLink="/discover">Ontdekken</a>
-        <a routerLink="/posts">Posts</a>
-        <a routerLink="/chat">Chat</a>
+        <a routerLink="/posts">Items</a>
         <a routerLink="/profile">Profiel</a>
-        <a routerLink="/plan">Premium</a>
+        <a routerLink="/plan">Plan</a>
         @if (session.isLoggedIn()) {
           <button class="secondary" type="button" (click)="session.clear()">Uitloggen</button>
         } @else {
