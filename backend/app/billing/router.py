@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter
 
-from app.auth.dependencies import CurrentUserDep, SessionDep
+from app.auth.dependencies import SessionDep, VerifiedUserDep
 from app.auth.service import to_user_response
 from app.core.enums import SubscriptionStatus, UserRole
 
@@ -10,12 +10,12 @@ router = APIRouter(prefix="/plan", tags=["Plan"])
 
 
 @router.get("/status")
-def read_status(user: CurrentUserDep) -> dict[str, str]:
+def read_status(user: VerifiedUserDep) -> dict[str, str]:
     return {"status": user.subscription_status.value, "role": user.role.value}
 
 
 @router.post("/enable")
-def enable_full_access(user: CurrentUserDep, session: SessionDep):
+def enable_full_access(user: VerifiedUserDep, session: SessionDep):
     user.role = UserRole.PREMIUM
     user.subscription_status = SubscriptionStatus.PREMIUM
     user.updated_at = datetime.now(UTC)
@@ -26,7 +26,7 @@ def enable_full_access(user: CurrentUserDep, session: SessionDep):
 
 
 @router.post("/disable")
-def disable_full_access(user: CurrentUserDep, session: SessionDep):
+def disable_full_access(user: VerifiedUserDep, session: SessionDep):
     user.role = UserRole.FREE
     user.subscription_status = SubscriptionStatus.CANCELLED
     user.updated_at = datetime.now(UTC)

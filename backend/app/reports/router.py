@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Body, HTTPException, status
@@ -29,10 +30,10 @@ def _serialize(item: Report) -> dict:
 def create_report(
     user: AgeConfirmedUserDep,
     session: SessionDep,
-    target_type: ReportTargetType = Body(embed=True),
-    target_id: UUID = Body(embed=True),
-    reason: ReportReason = Body(embed=True),
-    description: str | None = Body(default=None, embed=True),
+    target_type: Annotated[ReportTargetType, Body(embed=True)],
+    target_id: Annotated[UUID, Body(embed=True)],
+    reason: Annotated[ReportReason, Body(embed=True)],
+    description: Annotated[str | None, Body(embed=True)] = None,
 ) -> dict:
     item = Report(
         reporter_user_id=user.id,

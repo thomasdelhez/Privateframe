@@ -65,7 +65,10 @@ def create_post(user: User, payload: PostCreateRequest, session: Session, ip_add
 def list_posts(session: Session) -> list[MediaPost]:
     return list(
         session.exec(
-            select(MediaPost).where(MediaPost.status == PostStatus.PUBLISHED).order_by(desc(MediaPost.created_at)).limit(100)
+            select(MediaPost)
+            .where(MediaPost.status == PostStatus.PUBLISHED)
+            .order_by(desc(MediaPost.created_at))
+            .limit(100)
         ).all()
     )
 

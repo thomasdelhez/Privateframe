@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Request
 
 from app.auth.dependencies import AgeConfirmedUserDep, SessionDep
-from app.posts.schemas import PostCreateRequest, PostResponse, UploadResponse
+from app.posts.schemas import PostCreateRequest, PostResponse
 from app.posts.service import add_demo_asset, create_post, get_post, list_posts, to_post_response
 
 router = APIRouter(prefix="/posts", tags=["Posts"])
@@ -15,7 +15,12 @@ def read_posts(user: AgeConfirmedUserDep, session: SessionDep) -> list[PostRespo
 
 
 @router.post("", response_model=PostResponse)
-def create_new_post(payload: PostCreateRequest, request: Request, user: AgeConfirmedUserDep, session: SessionDep) -> PostResponse:
+def create_new_post(
+    payload: PostCreateRequest,
+    request: Request,
+    user: AgeConfirmedUserDep,
+    session: SessionDep,
+) -> PostResponse:
     post = create_post(user, payload, session, request.client.host if request.client else None)
     return to_post_response(post, user, session)
 
@@ -25,7 +30,7 @@ def read_post(post_id: UUID, user: AgeConfirmedUserDep, session: SessionDep) -> 
     return to_post_response(get_post(post_id, session), user, session)
 
 
-@router.post("/{post_id}/placeholder", response_model=UploadResponse)
-def add_placeholder(post_id: UUID, user: AgeConfirmedUserDep, session: SessionDep) -> UploadResponse:
-    asset = add_demo_asset(post_id, user, session)
-    return UploadResponse(asset=to_post_response(get_post(post_id, session), user, session).assets[-1])
+@router.post("/{post_id}/placeholder", response_model=PostResponse)
+def add_placeholder(post_id: UUID, user: AgeConfirmedUserDep, session: SessionDep) -> PostResponse:
+    add_demo_asset(post_id, user, session)
+    return to_post_response(get_post(post_id, session), user, session)

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.auth.dependencies import AgeConfirmedUserDep, CurrentUserDep, SessionDep
+from app.auth.dependencies import AgeConfirmedUserDep, SessionDep, VerifiedUserDep
 from app.profiles.schemas import ProfileResponse, ProfileUpsertRequest, ProfileVisitSummaryResponse
 from app.profiles.service import (
     get_my_profile,
@@ -21,17 +21,17 @@ def discover_profiles(_: AgeConfirmedUserDep, session: SessionDep) -> list[Profi
 
 
 @router.get("/me", response_model=ProfileResponse)
-def read_my_profile(user: CurrentUserDep, session: SessionDep) -> ProfileResponse:
+def read_my_profile(user: VerifiedUserDep, session: SessionDep) -> ProfileResponse:
     return to_profile_response(get_my_profile(user, session))
 
 
 @router.put("/me", response_model=ProfileResponse)
-def save_my_profile(payload: ProfileUpsertRequest, user: CurrentUserDep, session: SessionDep) -> ProfileResponse:
+def save_my_profile(payload: ProfileUpsertRequest, user: VerifiedUserDep, session: SessionDep) -> ProfileResponse:
     return to_profile_response(upsert_profile(user, payload, session))
 
 
 @router.get("/me/activity", response_model=ProfileVisitSummaryResponse)
-def read_profile_activity(user: CurrentUserDep, session: SessionDep) -> ProfileVisitSummaryResponse:
+def read_profile_activity(user: VerifiedUserDep, session: SessionDep) -> ProfileVisitSummaryResponse:
     return get_profile_visits(user, session)
 
 

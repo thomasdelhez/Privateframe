@@ -22,9 +22,13 @@ services:
     container_name: privateframe-backend
     environment:
       DATABASE_URL: postgresql+psycopg://privateframe:privateframe@database:5432/privateframe
-      JWT_SECRET_KEY: change-me-in-production
-      ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+      SESSION_EXPIRE_DAYS: "7"
       CORS_ORIGINS: http://localhost:4200
+      FRONTEND_URL: http://localhost:4200
+      EMAIL_BACKEND: smtp
+      EMAIL_FROM: PrivateFrame <noreply@privateframe.local>
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
       MEDIA_STORAGE_PATH: /app/media
     ports:
       - "8000:8000"
@@ -34,6 +38,15 @@ services:
     depends_on:
       database:
         condition: service_healthy
+      mailpit:
+        condition: service_started
+
+  mailpit:
+    image: axllent/mailpit:v1.20
+    container_name: privateframe-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
 
 volumes:
   privateframe_postgres:

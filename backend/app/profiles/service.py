@@ -8,7 +8,12 @@ from sqlmodel import Session, desc, select
 from app.auth.models import User
 from app.core.enums import UserRole
 from app.profiles.models import Profile, ProfileView
-from app.profiles.schemas import ProfileResponse, ProfileUpsertRequest, ProfileVisitResponse, ProfileVisitSummaryResponse
+from app.profiles.schemas import (
+    ProfileResponse,
+    ProfileUpsertRequest,
+    ProfileVisitResponse,
+    ProfileVisitSummaryResponse,
+)
 
 
 def make_slug(value: str) -> str:

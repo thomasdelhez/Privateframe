@@ -6,6 +6,7 @@ export interface CurrentUser {
   role: 'free' | 'premium' | 'moderator' | 'admin';
   subscription_status: string;
   status: string;
+  email_verified: boolean;
   age_confirmed: boolean;
 }
 
@@ -29,6 +30,10 @@ export class SessionService {
     return !!user && ['premium', 'moderator', 'admin'].includes(user.role);
   }
 
+  public isEmailVerified(): boolean {
+    return this.user()?.email_verified === true;
+  }
+
   public set(value: string, user: CurrentUser): void {
     localStorage.setItem(this.key, value);
     localStorage.setItem(this.userKey, JSON.stringify(user));
@@ -44,11 +49,18 @@ export class SessionService {
     localStorage.removeItem(this.key);
     localStorage.removeItem(this.userKey);
     this.user.set(null);
-    window.location.href = '/';
   }
 
   private readUser(): CurrentUser | null {
     const raw = localStorage.getItem(this.userKey);
-    return raw ? JSON.parse(raw) as CurrentUser : null;
+    if (!raw) {
+      return null;
+    }
+    try {
+      return JSON.parse(raw) as CurrentUser;
+    } catch {
+      localStorage.removeItem(this.userKey);
+      return null;
+    }
   }
 }

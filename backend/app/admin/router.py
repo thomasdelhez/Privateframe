@@ -57,7 +57,13 @@ def ban_user(user_id: UUID, admin: AdminUserDep, session: SessionDep) -> dict:
 def list_admin_posts(_: AdminUserDep, session: SessionDep) -> list[dict]:
     posts = session.exec(select(MediaPost).order_by(desc(MediaPost.created_at)).limit(100)).all()
     return [
-        {"id": post.id, "user_id": post.user_id, "title": post.title, "status": post.status, "created_at": post.created_at}
+        {
+            "id": post.id,
+            "user_id": post.user_id,
+            "title": post.title,
+            "status": post.status,
+            "created_at": post.created_at,
+        }
         for post in posts
     ]
 

@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Body, HTTPException, status
@@ -42,7 +43,11 @@ def list_conversations(user: PremiumUserDep, session: SessionDep) -> list[dict]:
 
 
 @router.post("")
-def create_conversation(user: PremiumUserDep, session: SessionDep, other_user_id: UUID = Body(embed=True)) -> dict:
+def create_conversation(
+    user: PremiumUserDep,
+    session: SessionDep,
+    other_user_id: Annotated[UUID, Body(embed=True)],
+) -> dict:
     if other_user_id == user.id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Je kunt geen gesprek met jezelf starten")
 
@@ -74,7 +79,12 @@ def list_messages(conversation_id: UUID, user: PremiumUserDep, session: SessionD
 
 
 @router.post("/{conversation_id}/messages")
-def send_message(conversation_id: UUID, user: PremiumUserDep, session: SessionDep, body: str = Body(embed=True)) -> dict:
+def send_message(
+    conversation_id: UUID,
+    user: PremiumUserDep,
+    session: SessionDep,
+    body: Annotated[str, Body(embed=True)],
+) -> dict:
     conversation = session.get(Conversation, conversation_id)
     if not conversation or user.id not in [conversation.user_a_id, conversation.user_b_id]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Gesprek niet gevonden")

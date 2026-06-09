@@ -21,13 +21,38 @@
             "assets": [],
             "styles": ["src/styles.scss"],
             "scripts": []
+          },
+          "configurations": {
+            "production": {
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.development.ts"
+                }
+              ]
+            }
           }
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
             "buildTarget": "privateframe-frontend:build"
-          }
+          },
+          "configurations": {
+            "production": {
+              "buildTarget": "privateframe-frontend:build:production"
+            },
+            "development": {
+              "buildTarget": "privateframe-frontend:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
         },
         "test": {
           "builder": "@angular-devkit/build-angular:karma",

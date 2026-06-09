@@ -1,13 +1,14 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 import { CurrentUser, SessionService } from './session.service';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
   private readonly session = inject(SessionService);
-  private readonly baseUrl = 'http://127.0.0.1:8000/api/v1';
+  private readonly baseUrl = environment.apiBaseUrl;
 
   public register(email: string, password: string): Observable<CurrentUser> {
     return this.http.post<CurrentUser>(`${this.baseUrl}/auth/register`, { email, password });
@@ -15,6 +16,30 @@ export class ApiService {
 
   public login(email: string, password: string): Observable<{ access_value: string; user: CurrentUser }> {
     return this.http.post<{ access_value: string; user: CurrentUser }>(`${this.baseUrl}/auth/login`, { email, password });
+  }
+
+  public getCurrentUser(): Observable<CurrentUser> {
+    return this.http.get<CurrentUser>(`${this.baseUrl}/auth/me`, { headers: this.headers() });
+  }
+
+  public logout(): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.baseUrl}/auth/logout`, {}, { headers: this.headers() });
+  }
+
+  public verifyEmail(token: string): Observable<CurrentUser> {
+    return this.http.post<CurrentUser>(`${this.baseUrl}/auth/email/verify`, { token });
+  }
+
+  public resendVerification(email: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.baseUrl}/auth/email/resend`, { email });
+  }
+
+  public forgotPassword(email: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.baseUrl}/auth/password/forgot`, { email });
+  }
+
+  public resetPassword(token: string, password: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.baseUrl}/auth/password/reset`, { token, password });
   }
 
   public confirmAge(): Observable<{ age_confirmed: boolean }> {
@@ -95,5 +120,9 @@ export interface Post {
   description: string | null;
   status: string;
   created_at: string;
-  assets: { id: string; locked: boolean; preview_url?: string | null; full_url?: string | null }[];
+  assets: { id: string; locked: boolean; preview_url?: string | null; url?: string | null }[];
+}
+
+export interface MessageResponse {
+  message: string;
 }

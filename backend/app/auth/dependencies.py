@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, status
@@ -10,29 +11,43 @@ from app.core.enums import UserRole, UserStatus
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
-def get_current_user(
+def get_current_session(
     session: SessionDep,
     authorization: Annotated[str | None, Header()] = None,
-) -> User:
+) -> UserSession:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Niet ingelogd")
 
     key = authorization.removeprefix("Bearer ").strip()
     user_session = session.exec(select(UserSession).where(UserSession.value == key)).first()
-    if not user_session:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessie is ongeldig")
+    if not user_session or user_session.revoked_at is not None or _as_utc(user_session.expires_at) <= datetime.now(UTC):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessie is ongeldig of verlopen")
+    return user_session
 
+
+CurrentSessionDep = Annotated[UserSession, Depends(get_current_session)]
+
+
+def get_current_user(user_session: CurrentSessionDep, session: SessionDep) -> User:
     user = session.get(User, user_session.user_id)
     if not user or user.status == UserStatus.BANNED:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Geen toegang")
-
     return user
 
 
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
 
 
-def require_age_confirmed(user: CurrentUserDep) -> User:
+def require_email_verified(user: CurrentUserDep) -> User:
+    if user.email_verified_at is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="E-mailverificatie vereist")
+    return user
+
+
+VerifiedUserDep = Annotated[User, Depends(require_email_verified)]
+
+
+def require_age_confirmed(user: VerifiedUserDep) -> User:
     if user.age_confirmed_at is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Leeftijdsbevestiging vereist")
     return user
@@ -57,3 +72,7 @@ def require_admin(user: CurrentUserDep) -> User:
 
 
 AdminUserDep = Annotated[User, Depends(require_admin)]
+
+
+def _as_utc(value: datetime) -> datetime:
+    return value if value.tzinfo else value.replace(tzinfo=UTC)

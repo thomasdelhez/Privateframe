@@ -1,5 +1,6 @@
-import { Component, inject } from '@angular/core';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { Component, OnInit, inject } from '@angular/core';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { ApiService } from './core/api.service';
 import { SessionService } from './core/session.service';
 
 @Component({
@@ -15,7 +16,7 @@ import { SessionService } from './core/session.service';
         <a routerLink="/profile">Profiel</a>
         <a routerLink="/plan">Plan</a>
         @if (session.isLoggedIn()) {
-          <button class="secondary" type="button" (click)="session.clear()">Uitloggen</button>
+          <button class="secondary" type="button" (click)="logout()">Uitloggen</button>
         } @else {
           <a routerLink="/login">Login</a>
         }
@@ -34,6 +35,30 @@ import { SessionService } from './core/session.service';
     .shell-main { max-width: 1120px; margin: 0 auto; padding: 2rem; }
   `]
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
+  private readonly api = inject(ApiService);
+  private readonly router = inject(Router);
   protected readonly session = inject(SessionService);
+
+  public ngOnInit(): void {
+    if (!this.session.isLoggedIn()) {
+      return;
+    }
+    this.api.getCurrentUser().subscribe({
+      next: user => this.session.updateUser(user),
+      error: () => this.finishLogout()
+    });
+  }
+
+  protected logout(): void {
+    this.api.logout().subscribe({
+      next: () => this.finishLogout(),
+      error: () => this.finishLogout()
+    });
+  }
+
+  private finishLogout(): void {
+    this.session.clear();
+    void this.router.navigateByUrl('/');
+  }
 }
