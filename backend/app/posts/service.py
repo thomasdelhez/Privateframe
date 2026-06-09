@@ -107,6 +107,17 @@ def list_posts(session: Session) -> list[MediaPost]:
     )
 
 
+def list_posts_for_user(user_id: UUID, session: Session, limit: int = 100) -> list[MediaPost]:
+    return list(
+        session.exec(
+            select(MediaPost)
+            .where(MediaPost.status == PostStatus.PUBLISHED, MediaPost.user_id == user_id)
+            .order_by(desc(MediaPost.created_at))
+            .limit(limit)
+        ).all()
+    )
+
+
 def get_post(post_id: UUID, session: Session) -> MediaPost:
     post = session.get(MediaPost, post_id)
     if not post or post.status != PostStatus.PUBLISHED:

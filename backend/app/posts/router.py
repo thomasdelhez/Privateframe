@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, File, Request, UploadFile
+from fastapi import APIRouter, File, Query, Request, UploadFile
 from fastapi.responses import FileResponse
 
 from app.auth.dependencies import AgeConfirmedUserDep, SessionDep
@@ -14,6 +14,7 @@ from app.posts.service import (
     get_post,
     guess_download_name,
     list_posts,
+    list_posts_for_user,
     save_uploaded_asset,
     to_post_response,
 )
@@ -22,8 +23,13 @@ router = APIRouter(prefix="/posts", tags=["Posts"])
 
 
 @router.get("", response_model=list[PostResponse])
-def read_posts(user: AgeConfirmedUserDep, session: SessionDep) -> list[PostResponse]:
-    return [to_post_response(post, user, session) for post in list_posts(session)]
+def read_posts(
+    user: AgeConfirmedUserDep,
+    session: SessionDep,
+    user_id: Annotated[UUID | None, Query()] = None,
+) -> list[PostResponse]:
+    posts = list_posts_for_user(user_id, session) if user_id else list_posts(session)
+    return [to_post_response(post, user, session) for post in posts]
 
 
 @router.post("", response_model=PostResponse)

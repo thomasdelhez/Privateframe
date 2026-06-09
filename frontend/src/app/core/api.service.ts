@@ -79,8 +79,14 @@ export class ApiService {
     return this.http.get<ProfileVisitSummary>(`${this.baseUrl}/profiles/me/activity`, { headers: this.headers() });
   }
 
-  public getPosts(): Observable<Post[]> {
-    return this.http.get<Post[]>(`${this.baseUrl}/posts`, { headers: this.headers() });
+  public getPosts(filters?: { userId?: string }): Observable<Post[]> {
+    const params = new URLSearchParams();
+    if (filters?.userId) {
+      params.set('user_id', filters.userId);
+    }
+    const query = params.toString();
+    const url = query ? `${this.baseUrl}/posts?${query}` : `${this.baseUrl}/posts`;
+    return this.http.get<Post[]>(url, { headers: this.headers() });
   }
 
   public createPost(payload: PostCreate): Observable<Post> {

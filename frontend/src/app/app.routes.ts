@@ -5,7 +5,6 @@ import { AgePageComponent } from './features/age-page.component';
 import { DiscoverPageComponent } from './features/discover-page.component';
 import { ProfilePageComponent } from './features/profile-page.component';
 import { ProfileDetailPageComponent } from './features/profile-detail-page.component';
-import { PostsPageComponent } from './features/posts-page.component';
 import { PlanPageComponent } from './features/upgrade-page.component';
 import { ForgotPasswordPageComponent } from './features/forgot-password-page.component';
 import { ResetPasswordPageComponent } from './features/reset-password-page.component';
@@ -22,7 +21,7 @@ export const routes: Routes = [
   { path: 'discover', component: DiscoverPageComponent, canActivate: [authGuard, verifiedGuard, ageGuard] },
   { path: 'discover/:slug', component: ProfileDetailPageComponent, canActivate: [authGuard, verifiedGuard, ageGuard] },
   { path: 'profile', component: ProfilePageComponent, canActivate: [authGuard, verifiedGuard] },
-  { path: 'posts', component: PostsPageComponent, canActivate: [authGuard, verifiedGuard, ageGuard] },
+  { path: 'posts', redirectTo: 'profile', pathMatch: 'full' },
   { path: 'plan', component: PlanPageComponent, canActivate: [authGuard, verifiedGuard] },
   { path: '**', redirectTo: '' }
 ];
