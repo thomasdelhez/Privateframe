@@ -8,6 +8,8 @@ class ProfileUpsertRequest(BaseModel):
     display_name: str = Field(min_length=2, max_length=80)
     bio: str | None = Field(default=None, max_length=1000)
     location_label: str | None = Field(default=None, max_length=120)
+    gender: str | None = Field(default=None, max_length=80)
+    age_label: str | None = Field(default=None, max_length=40)
 
 
 class ProfileResponse(BaseModel):
@@ -17,7 +19,11 @@ class ProfileResponse(BaseModel):
     slug: str
     bio: str | None
     location_label: str | None
+    gender: str | None
+    age_label: str | None
+    last_active_at: datetime | None
     created_at: datetime
+    updated_at: datetime
 
 
 class ProfileVisitResponse(BaseModel):

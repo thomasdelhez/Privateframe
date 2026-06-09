@@ -1,7 +1,7 @@
 # PrivateFrame
 
 PrivateFrame is een Nederlandse private social discovery-MVP met accounts, e-mailverificatie, profielen,
-contentkaartjes, premiumtoegang en een backendbasis voor chat en moderatie.
+uitgebreide discovery, profielbezoekers, contentkaartjes, premiumtoegang en een backendbasis voor chat en moderatie.
 
 ## Stack
 
@@ -99,6 +99,14 @@ De productieomgeving staat in `/etc/privateframe/backend.env` op de server en wo
 4. Rond de eenvoudige leeftijdsbevestiging af.
 5. Gebruik profielen, discovery, posts en het accountplan.
 
+## Discovery en profielen
+
+- Discovery ondersteunt zoeken op naam, slug, bio en locatie.
+- Discovery toont leeftijdslabel, gender en recente activiteit wanneer die beschikbaar zijn.
+- Ieder profiel heeft een publiek slugscherm onder `/discover/:slug`.
+- De profielpagina toont recente profielbezoeken.
+- Gratis accounts zien profielbezoeken anoniem; premium ziet ook welk profiel heeft gekeken.
+
 Sessies zijn zeven dagen geldig, kunnen met logout worden ingetrokken en worden allemaal ingetrokken na een
 wachtwoordreset. Login-, registratie- en herstelendpoints hebben basis-rate-limiting.
 
@@ -107,6 +115,6 @@ wachtwoordreset. Login-, registratie- en herstelendpoints hebben basis-rate-limi
 - Leeftijdscontrole is nog een eenvoudige bevestiging.
 - Betalingen en media-upload zijn nog gemockt.
 - De rate limiter is procesgebonden; productie vraagt een gedeelde opslag zoals Redis.
-- Chat, reports, profielbezoekers en adminfuncties bestaan als API maar hebben nog geen volledige frontend.
+- Chat, reports en adminfuncties bestaan als API maar hebben nog geen volledige frontend.
 - Voor productie zijn onder meer echte e-mailbezorging, secrets, monitoring en formeel privacy- en
   moderatiebeleid nodig.

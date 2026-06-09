@@ -46,16 +46,37 @@ export class ApiService {
     return this.http.post<{ age_confirmed: boolean }>(`${this.baseUrl}/auth/age/confirm`, {}, { headers: this.headers() });
   }
 
-  public getProfiles(): Observable<Profile[]> {
-    return this.http.get<Profile[]>(`${this.baseUrl}/profiles`, { headers: this.headers() });
+  public getProfiles(filters?: { q?: string; location?: string; limit?: number }): Observable<Profile[]> {
+    const params = new URLSearchParams();
+    if (filters?.q) {
+      params.set('q', filters.q);
+    }
+    if (filters?.location) {
+      params.set('location', filters.location);
+    }
+    if (filters?.limit) {
+      params.set('limit', String(filters.limit));
+    }
+
+    const query = params.toString();
+    const url = query ? `${this.baseUrl}/profiles?${query}` : `${this.baseUrl}/profiles`;
+    return this.http.get<Profile[]>(url, { headers: this.headers() });
   }
 
   public getMyProfile(): Observable<Profile> {
     return this.http.get<Profile>(`${this.baseUrl}/profiles/me`, { headers: this.headers() });
   }
 
+  public getProfile(slug: string): Observable<Profile> {
+    return this.http.get<Profile>(`${this.baseUrl}/profiles/${slug}`, { headers: this.headers() });
+  }
+
   public saveMyProfile(payload: ProfileSave): Observable<Profile> {
     return this.http.put<Profile>(`${this.baseUrl}/profiles/me`, payload, { headers: this.headers() });
+  }
+
+  public getMyProfileActivity(): Observable<ProfileVisitSummary> {
+    return this.http.get<ProfileVisitSummary>(`${this.baseUrl}/profiles/me/activity`, { headers: this.headers() });
   }
 
   public getPosts(): Observable<Post[]> {
@@ -95,13 +116,30 @@ export interface Profile {
   slug: string;
   bio: string | null;
   location_label: string | null;
+  gender: string | null;
+  age_label: string | null;
+  last_active_at: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface ProfileSave {
   display_name: string;
   bio?: string | null;
   location_label?: string | null;
+  gender?: string | null;
+  age_label?: string | null;
+}
+
+export interface ProfileVisit {
+  id: string;
+  visited_at: string;
+  profile: Profile | null;
+}
+
+export interface ProfileVisitSummary {
+  count: number;
+  visits: ProfileVisit[];
 }
 
 export interface PostCreate {

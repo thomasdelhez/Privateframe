@@ -1,4 +1,6 @@
-from fastapi import APIRouter
+from typing import Annotated
+
+from fastapi import APIRouter, Query
 
 from app.auth.dependencies import AgeConfirmedUserDep, SessionDep, VerifiedUserDep
 from app.profiles.schemas import ProfileResponse, ProfileUpsertRequest, ProfileVisitSummaryResponse
@@ -16,8 +18,23 @@ router = APIRouter(prefix="/profiles", tags=["Profiles"])
 
 
 @router.get("", response_model=list[ProfileResponse])
-def discover_profiles(_: AgeConfirmedUserDep, session: SessionDep) -> list[ProfileResponse]:
-    return [to_profile_response(profile) for profile in list_profiles(session)]
+def discover_profiles(
+    user: AgeConfirmedUserDep,
+    session: SessionDep,
+    q: Annotated[str | None, Query(max_length=80)] = None,
+    location: Annotated[str | None, Query(max_length=120)] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> list[ProfileResponse]:
+    return [
+        to_profile_response(profile)
+        for profile in list_profiles(
+            session,
+            viewer_user_id=user.id,
+            query=q.strip() or None if q else None,
+            location=location.strip() or None if location else None,
+            limit=limit,
+        )
+    ]
 
 
 @router.get("/me", response_model=ProfileResponse)

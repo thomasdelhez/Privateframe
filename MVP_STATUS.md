@@ -27,6 +27,15 @@
 - Basis-rate-limiting op gevoelige accountendpoints.
 - Duidelijkere validatie- en API-foutmeldingen in de frontend.
 
+## Afgerond: Sprint 3
+
+- Discovery sluit de ingelogde gebruiker uit en ondersteunt zoeken op naam, slug, bio, locatie en profielkenmerken.
+- Profielen tonen nu ook leeftijdslabel, gender en recente activiteit.
+- Er is een publiek profieldetailscherm op slug-niveau.
+- De profielpagina toont recente profielbezoekers.
+- Premiumgebruikers zien welke profielen hen bekeken; gratis accounts zien alleen anonieme meldingen.
+- Backendtests dekken discoveryfilters en profielbezoekerslogica.
+
 ## Bestaande platformbasis
 
 - Profielen, unieke slugs, discovery en profielbezoekersregistratie.
@@ -38,9 +47,8 @@
 
 ## Volgende productstappen
 
-1. Profielen en discovery uitbreiden.
-2. Echte media-upload en opslag toevoegen.
-3. Chatfrontend bouwen.
-4. Moderatie- en adminfrontend bouwen.
-5. Echte abonnementsbetalingen integreren.
-6. Productie-hardening, privacy en compliance uitvoeren.
+1. Echte media-upload en opslag toevoegen.
+2. Chatfrontend bouwen.
+3. Moderatie- en adminfrontend bouwen.
+4. Echte abonnementsbetalingen integreren.
+5. Productie-hardening, privacy en compliance uitvoeren.

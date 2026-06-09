@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from sqlalchemy import or_
 from sqlmodel import Session, desc, select
 
 from app.auth.models import User
@@ -29,7 +30,11 @@ def to_profile_response(profile: Profile) -> ProfileResponse:
         slug=profile.slug,
         bio=profile.bio,
         location_label=profile.location_label,
+        gender=profile.gender,
+        age_label=profile.age_label,
+        last_active_at=profile.last_active_at,
         created_at=profile.created_at,
+        updated_at=profile.updated_at,
     )
 
 
@@ -50,7 +55,10 @@ def upsert_profile(user: User, payload: ProfileUpsertRequest, session: Session) 
         profile.display_name = payload.display_name
         profile.bio = payload.bio
         profile.location_label = payload.location_label
+        profile.gender = payload.gender
+        profile.age_label = payload.age_label
         profile.slug = slug
+        profile.last_active_at = datetime.now(UTC)
         profile.updated_at = datetime.now(UTC)
     else:
         profile = Profile(
@@ -59,6 +67,9 @@ def upsert_profile(user: User, payload: ProfileUpsertRequest, session: Session) 
             slug=slug,
             bio=payload.bio,
             location_label=payload.location_label,
+            gender=payload.gender,
+            age_label=payload.age_label,
+            last_active_at=datetime.now(UTC),
         )
 
     session.add(profile)
@@ -74,8 +85,37 @@ def get_my_profile(user: User, session: Session) -> Profile:
     return profile
 
 
-def list_profiles(session: Session, limit: int = 50) -> list[Profile]:
-    return list(session.exec(select(Profile).order_by(desc(Profile.created_at)).limit(limit)).all())
+def list_profiles(
+    session: Session,
+    *,
+    viewer_user_id: UUID | None = None,
+    query: str | None = None,
+    location: str | None = None,
+    limit: int = 50,
+) -> list[Profile]:
+    statement = select(Profile)
+
+    if viewer_user_id:
+        statement = statement.where(Profile.user_id != viewer_user_id)
+
+    if query:
+        needle = f"%{query.lower()}%"
+        statement = statement.where(
+            or_(
+                Profile.display_name.ilike(needle),
+                Profile.slug.ilike(needle),
+                Profile.bio.ilike(needle),
+                Profile.location_label.ilike(needle),
+                Profile.gender.ilike(needle),
+                Profile.age_label.ilike(needle),
+            )
+        )
+
+    if location:
+        statement = statement.where(Profile.location_label.ilike(f"%{location.lower()}%"))
+
+    statement = statement.order_by(desc(Profile.last_active_at), desc(Profile.created_at)).limit(limit)
+    return list(session.exec(statement).all())
 
 
 def get_profile_by_slug(slug: str, session: Session) -> Profile:
