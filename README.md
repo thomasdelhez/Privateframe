@@ -69,6 +69,28 @@ cd ../frontend
 npm run build
 ```
 
+## Automatische productie-deployment
+
+Iedere push of merge naar `main` wordt na geslaagde backend- en frontendcontroles automatisch naar de
+Hetzner-server gedeployed. PrivateFrame blijft bereikbaar via:
+
+```text
+http://77.42.77.241:8080
+```
+
+De GitHub-repository heeft hiervoor één Actions-secret nodig:
+
+```text
+DEPLOY_SSH_KEY
+```
+
+Dit secret bevat de private SSH-deploykey waarvan de publieke sleutel op de server is geïnstalleerd. De workflow
+bouwt de frontend in GitHub Actions, maakt een release op de server, back-upt PostgreSQL, voert Alembic uit,
+herstart de systemd-service en controleert de healthcheck. Bij een mislukte healthcheck worden de applicatiebestanden
+naar de vorige release teruggezet.
+
+De productieomgeving staat in `/etc/privateframe/backend.env` op de server en wordt niet in Git opgeslagen.
+
 ## Accountflow
 
 1. Registreer met een wachtwoord van minimaal 10 tekens.

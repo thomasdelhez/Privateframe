@@ -31,7 +31,6 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("status", sa.Enum("ACTIVE", "RESTRICTED", "BANNED", name="userstatus"), nullable=False),
-        sa.Column("email_verified_at", sa.DateTime(), nullable=True),
         sa.Column("age_confirmed_at", sa.DateTime(), nullable=True),
         sa.Column("age_confirmation_ip", sqlmodel.sql.sqltypes.AutoString(length=64), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
@@ -39,26 +38,6 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_user_email"), "user", ["email"], unique=True)
-    op.create_table(
-        "accounttoken",
-        sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("user_id", sa.Uuid(), nullable=False),
-        sa.Column("purpose", sqlmodel.sql.sqltypes.AutoString(length=40), nullable=False),
-        sa.Column("token_hash", sqlmodel.sql.sqltypes.AutoString(length=64), nullable=False),
-        sa.Column("expires_at", sa.DateTime(), nullable=False),
-        sa.Column("used_at", sa.DateTime(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["user_id"],
-            ["user.id"],
-        ),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(op.f("ix_accounttoken_expires_at"), "accounttoken", ["expires_at"], unique=False)
-    op.create_index(op.f("ix_accounttoken_purpose"), "accounttoken", ["purpose"], unique=False)
-    op.create_index(op.f("ix_accounttoken_token_hash"), "accounttoken", ["token_hash"], unique=True)
-    op.create_index(op.f("ix_accounttoken_used_at"), "accounttoken", ["used_at"], unique=False)
-    op.create_index(op.f("ix_accounttoken_user_id"), "accounttoken", ["user_id"], unique=False)
     op.create_table(
         "auditlog",
         sa.Column("id", sa.Uuid(), nullable=False),
@@ -213,16 +192,12 @@ def upgrade() -> None:
         sa.Column("user_id", sa.Uuid(), nullable=False),
         sa.Column("value", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
-        sa.Column("expires_at", sa.DateTime(), nullable=False),
-        sa.Column("revoked_at", sa.DateTime(), nullable=True),
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["user.id"],
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_usersession_expires_at"), "usersession", ["expires_at"], unique=False)
-    op.create_index(op.f("ix_usersession_revoked_at"), "usersession", ["revoked_at"], unique=False)
     op.create_index(op.f("ix_usersession_user_id"), "usersession", ["user_id"], unique=False)
     op.create_index(op.f("ix_usersession_value"), "usersession", ["value"], unique=True)
     op.create_table(
@@ -306,8 +281,6 @@ def downgrade() -> None:
     op.drop_table("consentconfirmation")
     op.drop_index(op.f("ix_usersession_value"), table_name="usersession")
     op.drop_index(op.f("ix_usersession_user_id"), table_name="usersession")
-    op.drop_index(op.f("ix_usersession_revoked_at"), table_name="usersession")
-    op.drop_index(op.f("ix_usersession_expires_at"), table_name="usersession")
     op.drop_table("usersession")
     op.drop_index(op.f("ix_report_target_type"), table_name="report")
     op.drop_index(op.f("ix_report_target_id"), table_name="report")
@@ -337,12 +310,6 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_auditlog_actor_user_id"), table_name="auditlog")
     op.drop_index(op.f("ix_auditlog_action"), table_name="auditlog")
     op.drop_table("auditlog")
-    op.drop_index(op.f("ix_accounttoken_user_id"), table_name="accounttoken")
-    op.drop_index(op.f("ix_accounttoken_used_at"), table_name="accounttoken")
-    op.drop_index(op.f("ix_accounttoken_token_hash"), table_name="accounttoken")
-    op.drop_index(op.f("ix_accounttoken_purpose"), table_name="accounttoken")
-    op.drop_index(op.f("ix_accounttoken_expires_at"), table_name="accounttoken")
-    op.drop_table("accounttoken")
     op.drop_index(op.f("ix_user_email"), table_name="user")
     op.drop_table("user")
     # ### end Alembic commands ###

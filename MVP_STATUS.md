@@ -9,6 +9,7 @@
 - Docker Compose bevat PostgreSQL, backend en Mailpit.
 - De placeholder-assetresponse sluit aan op het frontendcontract.
 - Backendtests, linting, migratiecontrole en frontendbuild draaien in GitHub Actions.
+- Geslaagde pushes naar `main` kunnen release-based naar Hetzner deployen.
 - Lokale start- en testdocumentatie is bijgewerkt.
 
 ## Afgerond: Sprint 2

@@ -1,0 +1,15 @@
+[Unit]
+Description=PrivateFrame FastAPI Backend
+After=network.target postgresql.service
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=/var/www/privateframe/current/backend
+EnvironmentFile=/etc/privateframe/backend.env
+ExecStart=/var/www/privateframe/current/backend/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

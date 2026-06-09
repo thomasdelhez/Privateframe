@@ -55,3 +55,68 @@ jobs:
       - run: npm ci
       - run: npm audit --omit=dev --audit-level=high
       - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: privateframe-frontend
+          path: frontend/dist/privateframe-frontend/browser
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: privateframe-production
+      cancel-in-progress: false
+    env:
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+    steps:
+      - name: Check deployment credentials
+        id: deploy-credentials
+        run: |
+          if [[ -n "${DEPLOY_SSH_KEY}" ]]; then
+            echo "enabled=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+            echo "DEPLOY_SSH_KEY is not configured; deployment is skipped."
+          fi
+      - if: steps.deploy-credentials.outputs.enabled == 'true'
+        uses: actions/checkout@v4
+      - if: steps.deploy-credentials.outputs.enabled == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: privateframe-frontend
+          path: /tmp/privateframe-frontend
+      - name: Build release archive
+        if: steps.deploy-credentials.outputs.enabled == 'true'
+        run: |
+          mkdir -p /tmp/privateframe-release
+          git archive HEAD | tar -x -C /tmp/privateframe-release
+          mkdir -p /tmp/privateframe-release/frontend/dist/privateframe-frontend/browser
+          cp -a /tmp/privateframe-frontend/. /tmp/privateframe-release/frontend/dist/privateframe-frontend/browser/
+          tar -czf "/tmp/privateframe-${GITHUB_SHA}.tar.gz" -C /tmp/privateframe-release .
+      - name: Configure SSH
+        if: steps.deploy-credentials.outputs.enabled == 'true'
+        run: |
+          test -n "${DEPLOY_SSH_KEY}"
+          install -d -m 0700 ~/.ssh
+          printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/id_ed25519
+          chmod 0600 ~/.ssh/id_ed25519
+          printf '%s\n' \
+            '77.42.77.241 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFg8dF4G4KO2kuW4MGzEJkAyhau+jhxfCTkzb431ntNr' \
+            > ~/.ssh/known_hosts
+          chmod 0600 ~/.ssh/known_hosts
+      - name: Upload release
+        if: steps.deploy-credentials.outputs.enabled == 'true'
+        run: |
+          scp -i ~/.ssh/id_ed25519 \
+            "/tmp/privateframe-${GITHUB_SHA}.tar.gz" \
+            "root@77.42.77.241:/tmp/privateframe-${GITHUB_SHA}.tar.gz"
+      - name: Deploy and verify
+        if: steps.deploy-credentials.outputs.enabled == 'true'
+        run: |
+          ssh -i ~/.ssh/id_ed25519 root@77.42.77.241 \
+            "bash -s -- '${GITHUB_SHA}' '/tmp/privateframe-${GITHUB_SHA}.tar.gz'" \
+            < deploy/remote-deploy.sh
