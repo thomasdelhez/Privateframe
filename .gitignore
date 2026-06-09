@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+.angular/
+
+# Local config
+.env
+.env.*
+!.env.example
+
+# Runtime files
+media/
+*.log
