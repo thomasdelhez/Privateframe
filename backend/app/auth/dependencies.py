@@ -43,6 +43,8 @@ VerifiedUserDep = Annotated[User, Depends(require_email_verified)]
 
 
 def require_age_confirmed(user: VerifiedUserDep) -> User:
+    if user.status == UserStatus.RESTRICTED:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is beperkt door moderatie")
     if user.age_confirmed_at is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Leeftijdsbevestiging vereist")
     return user

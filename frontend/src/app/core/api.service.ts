@@ -161,6 +161,10 @@ export class ApiService {
     return this.http.get<AdminPost[]>(`${this.baseUrl}/admin/posts`, { headers: this.headers() });
   }
 
+  public getAdminPost(postId: string): Observable<AdminPost> {
+    return this.http.get<AdminPost>(`${this.baseUrl}/admin/posts/${postId}`, { headers: this.headers() });
+  }
+
   public hidePost(postId: string): Observable<{ id: string; status: string }> {
     return this.http.post<{ id: string; status: string }>(`${this.baseUrl}/admin/posts/${postId}/hide`, {}, { headers: this.headers() });
   }
@@ -171,6 +175,10 @@ export class ApiService {
 
   public getAuditLog(): Observable<AuditLogEntry[]> {
     return this.http.get<AuditLogEntry[]>(`${this.baseUrl}/admin/audit`, { headers: this.headers() });
+  }
+
+  public getAdminReportContext(reportId: string): Observable<AdminReportContext> {
+    return this.http.get<AdminReportContext>(`${this.baseUrl}/admin/reports/${reportId}/context`, { headers: this.headers() });
   }
 
   public getPlanStatus(): Observable<{ status: string; role: string }> {
@@ -298,14 +306,22 @@ export interface AdminUser {
   status: string;
   subscription_status: string;
   created_at: string;
+  profile_slug: string | null;
+  display_name: string | null;
 }
 
 export interface AdminPost {
   id: string;
   user_id: string;
   title: string;
+  description?: string | null;
   status: string;
   created_at: string;
+  updated_at?: string;
+  removed_at?: string | null;
+  profile_slug: string | null;
+  display_name: string | null;
+  assets?: { id: string; locked: boolean; preview_url?: string | null; url?: string | null; mime_type?: string; file_size?: number }[];
 }
 
 export interface AuditLogEntry {
@@ -316,6 +332,22 @@ export interface AuditLogEntry {
   entity_id: string;
   reason: string | null;
   created_at: string;
+}
+
+export interface AdminReportContext {
+  report: ReportItem;
+  profile?: Profile | null;
+  post?: AdminPost | null;
+  conversation?: {
+    id: string;
+    status: string;
+    user_a_id: string;
+    user_b_id: string;
+    created_at: string;
+    updated_at: string;
+    participants: AdminUser[];
+  } | null;
+  messages?: ChatMessage[];
 }
 
 export interface MessageResponse {
