@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ApiService, Post, Profile, ProfileVisitSummary } from '../core/api.service';
+import { ApiService, Post, Profile, ProfileVisitSummary, ReportItem } from '../core/api.service';
 import { SessionService } from '../core/session.service';
 
 @Component({
@@ -101,7 +101,7 @@ import { SessionService } from '../core/session.service';
                   </div>
 
                   <button type="submit" [disabled]="isSavingPost() || !canCreatePost()">
-                    {{ isSavingPost() ? 'Aanmaken...' : 'Fotoreeks aanmaken' }}
+                    {{ isSavingPost() ? 'Aanmaken...' : 'Fotoalbum aanmaken' }}
                   </button>
                 </form>
 
@@ -216,6 +216,40 @@ import { SessionService } from '../core/session.service';
                 }
               }
             </article>
+
+            <article class="panel">
+              <div class="activity-head">
+                <div>
+                  <h2>Mijn meldingen</h2>
+                  <p class="muted">Een overzicht van reports die je zelf hebt gedaan.</p>
+                </div>
+                <button type="button" class="secondary" (click)="loadReports()" [disabled]="isLoadingReports()">
+                  Vernieuwen
+                </button>
+              </div>
+
+              @if (isLoadingReports()) {
+                <p>Meldingen laden...</p>
+              } @else if (myReports().length === 0) {
+                <p class="muted">Je hebt nog geen meldingen gedaan.</p>
+              } @else {
+                <div class="activity-list">
+                  @for (report of myReports(); track report.id) {
+                    <div class="activity-item">
+                      <div>
+                        <strong>{{ report.target_type }} · {{ report.reason.replaceAll('_', ' ') }}</strong>
+                        @if (report.description) {
+                          <p class="muted">{{ report.description }}</p>
+                        } @else {
+                          <p class="muted">Geen extra toelichting toegevoegd.</p>
+                        }
+                      </div>
+                      <span class="pill">{{ report.status }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            </article>
           </div>
         </div>
       }
@@ -280,10 +314,12 @@ export class ProfilePageComponent implements OnInit {
   protected readonly profile = signal<Profile | null>(null);
   protected readonly gallery = signal<Post[]>([]);
   protected readonly activity = signal<ProfileVisitSummary | null>(null);
+  protected readonly myReports = signal<ReportItem[]>([]);
   protected readonly isSavingProfile = signal(false);
   protected readonly isSavingPost = signal(false);
   protected readonly isLoadingActivity = signal(false);
   protected readonly isLoadingGallery = signal(false);
+  protected readonly isLoadingReports = signal(false);
   protected readonly uploadingPostId = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly activityError = signal<string | null>(null);
@@ -319,6 +355,7 @@ export class ProfilePageComponent implements OnInit {
     });
 
     this.loadActivity();
+    this.loadReports();
   }
 
   protected canCreatePost(): boolean {
@@ -370,11 +407,11 @@ export class ProfilePageComponent implements OnInit {
         this.gallery.set([post, ...this.gallery()]);
         this.postTitle = '';
         this.postDescription = '';
-        this.success.set('Fotoreeks aangemaakt. Voeg nu je eerste foto toe.');
+        this.success.set('Fotoalbum aangemaakt. Voeg nu je eerste foto toe.');
         this.isSavingPost.set(false);
       },
       error: () => {
-        this.error.set('Fotoreeks aanmaken is niet gelukt. Controleer of alle regels zijn aangevinkt.');
+        this.error.set('Fotoalbum aanmaken is niet gelukt. Controleer of alle regels zijn aangevinkt.');
         this.isSavingPost.set(false);
       }
     });
@@ -418,6 +455,20 @@ export class ProfilePageComponent implements OnInit {
       error: () => {
         this.activityError.set('Profielactiviteit laden is niet gelukt.');
         this.isLoadingActivity.set(false);
+      }
+    });
+  }
+
+  protected loadReports(): void {
+    this.isLoadingReports.set(true);
+    this.api.getMyReports().subscribe({
+      next: reports => {
+        this.myReports.set(reports);
+        this.isLoadingReports.set(false);
+      },
+      error: () => {
+        this.myReports.set([]);
+        this.isLoadingReports.set(false);
       }
     });
   }

@@ -21,3 +21,15 @@ export const ageGuard: CanActivateFn = () => {
   const router = inject(Router);
   return session.user()?.age_confirmed ? true : router.createUrlTree(['/age']);
 };
+
+export const premiumGuard: CanActivateFn = () => {
+  const session = inject(SessionService);
+  const router = inject(Router);
+  return session.isPremium() ? true : router.createUrlTree(['/plan']);
+};
+
+export const adminGuard: CanActivateFn = () => {
+  const session = inject(SessionService);
+  const router = inject(Router);
+  return session.isAdmin() ? true : router.createUrlTree(['/discover']);
+};

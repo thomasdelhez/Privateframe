@@ -30,6 +30,15 @@ export class SessionService {
     return !!user && ['premium', 'moderator', 'admin'].includes(user.role);
   }
 
+  public isStaff(): boolean {
+    const user = this.user();
+    return !!user && ['moderator', 'admin'].includes(user.role);
+  }
+
+  public isAdmin(): boolean {
+    return this.user()?.role === 'admin';
+  }
+
   public isEmailVerified(): boolean {
     return this.user()?.email_verified === true;
   }

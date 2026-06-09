@@ -13,7 +13,13 @@ import { SessionService } from './core/session.service';
       <nav>
         <a routerLink="/discover">Ontdekken</a>
         <a routerLink="/profile">Profiel</a>
+        @if (session.isPremium()) {
+          <a routerLink="/chat">Berichten</a>
+        }
         <a routerLink="/plan">Plan</a>
+        @if (session.isAdmin()) {
+          <a routerLink="/admin">Admin</a>
+        }
         @if (session.isLoggedIn()) {
           <button class="secondary" type="button" (click)="logout()">Uitloggen</button>
         } @else {

@@ -1,6 +1,8 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
-import { ApiService, Post, Profile } from '../core/api.service';
+import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ApiService, Post, Profile, ReportReason } from '../core/api.service';
+import { SessionService } from '../core/session.service';
 
 interface GalleryItem {
   assetId: string;
@@ -12,7 +14,7 @@ interface GalleryItem {
 
 @Component({
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, FormsModule],
   template: `
     <section class="card flow">
       <a routerLink="/discover" class="back-link">Terug naar ontdekken</a>
@@ -40,7 +42,53 @@ interface GalleryItem {
               }
             </div>
           </div>
+          <div class="hero-actions">
+            @if (!isOwnProfile() && session.isPremium()) {
+              <button type="button" (click)="startConversation()" [disabled]="isStartingConversation()">
+                {{ isStartingConversation() ? 'Openen...' : 'Chat starten' }}
+              </button>
+            }
+            @if (!isOwnProfile()) {
+              <button type="button" class="secondary" (click)="toggleReportComposer()">
+                {{ isReportComposerOpen() ? 'Annuleren' : 'Profiel melden' }}
+              </button>
+            }
+          </div>
         </header>
+
+        @if (actionSuccess()) {
+          <p class="success">{{ actionSuccess() }}</p>
+        }
+
+        @if (isReportComposerOpen()) {
+          <article class="panel">
+            <h2>Profiel melden</h2>
+            <form class="report-form" (ngSubmit)="submitProfileReport()">
+              <label>
+                Reden
+                <select name="reportReason" [(ngModel)]="reportReason">
+                  @for (option of reportReasons; track option.value) {
+                    <option [value]="option.value">{{ option.label }}</option>
+                  }
+                </select>
+              </label>
+
+              <label>
+                Toelichting
+                <textarea
+                  name="reportDescription"
+                  [(ngModel)]="reportDescription"
+                  rows="4"
+                  maxlength="600"
+                  placeholder="Geef kort door wat er mis is op dit profiel."></textarea>
+              </label>
+
+              <button type="submit" [disabled]="isSubmittingReport()">
+                {{ isSubmittingReport() ? 'Verzenden...' : 'Melding versturen' }}
+              </button>
+            </form>
+          </article>
+        }
 
         <div class="details-grid">
           <article class="panel">
@@ -99,7 +147,7 @@ interface GalleryItem {
         <div class="lightbox" (click)="$event.stopPropagation()">
           <button type="button" class="lightbox-close" (click)="closeLightbox()">Sluiten</button>
 
-          <div class="lightbox-media">
+          <div class="lightbox-media" (touchstart)="onTouchStart($event)" (touchend)="onTouchEnd($event)">
             <button
               type="button"
               class="lightbox-nav"
@@ -142,6 +190,7 @@ interface GalleryItem {
     .hero { display: flex; gap: 1rem; align-items: center; padding: 1.5rem; border-radius: 1.5rem; background: linear-gradient(135deg, rgba(15, 23, 42, .98), rgba(30, 41, 59, .92) 55%, rgba(9, 9, 11, .94)); border: 1px solid rgba(148, 163, 184, .14); color: #f8fafc; }
     .avatar { display: grid; place-items: center; width: 4.75rem; height: 4.75rem; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #ec4899 50%, #38bdf8); color: white; font-size: 1.35rem; font-weight: 900; flex: 0 0 auto; }
     .hero-copy { display: grid; gap: .35rem; }
+    .hero-actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
     .eyebrow { margin: 0; color: #f59e0b; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
     .muted { color: #94a3b8; }
     .meta-row { display: flex; flex-wrap: wrap; gap: .5rem; }
@@ -158,6 +207,9 @@ interface GalleryItem {
     .gallery-title { color: #e2e8f0; font-weight: 700; }
     .caption-row { display: flex; justify-content: space-between; gap: .75rem; align-items: center; }
     .error { color: #fecaca; background: rgba(127, 29, 29, .45); padding: .85rem; border-radius: .75rem; }
+    .success { color: #bbf7d0; background: rgba(20, 83, 45, .45); padding: .85rem; border-radius: .75rem; }
+    .report-form { display: grid; gap: .9rem; }
+    textarea, select { width: 100%; border: 1px solid rgba(148, 163, 184, .2); border-radius: .85rem; background: rgba(15, 23, 42, .95); color: #f8fafc; padding: .85rem .95rem; }
     .lightbox-backdrop { position: fixed; inset: 0; background: rgba(2, 6, 23, .82); backdrop-filter: blur(8px); display: grid; place-items: center; padding: 1.5rem; z-index: 100; }
     .lightbox { width: min(1100px, 100%); display: grid; gap: 1rem; border: 1px solid rgba(148, 163, 184, .16); border-radius: 1.25rem; background: linear-gradient(180deg, rgba(15, 23, 42, .98), rgba(2, 6, 23, 1)); padding: 1rem; box-shadow: 0 24px 60px rgba(0, 0, 0, .45); }
     .lightbox-close { justify-self: end; }
@@ -171,23 +223,44 @@ interface GalleryItem {
       .lightbox-nav { width: 100%; }
     }
     @media (max-width: 720px) {
-      .hero { align-items: flex-start; }
+      .hero { align-items: flex-start; display: grid; }
+      .hero-actions { margin-left: 0; }
     }
   `]
 })
 export class ProfileDetailPageComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  protected readonly session = inject(SessionService);
 
   protected readonly profile = signal<Profile | null>(null);
   protected readonly gallery = signal<Post[]>([]);
   protected readonly galleryItems = signal<GalleryItem[]>([]);
   protected readonly isLoading = signal(true);
   protected readonly isLoadingGallery = signal(false);
+  protected readonly isStartingConversation = signal(false);
+  protected readonly isReportComposerOpen = signal(false);
+  protected readonly isSubmittingReport = signal(false);
   protected readonly activeIndex = signal<number | null>(null);
   protected readonly error = signal<string | null>(null);
+  protected readonly actionSuccess = signal<string | null>(null);
 
   protected readonly activeItem = signal<GalleryItem | null>(null);
+  private touchStartX: number | null = null;
+  private touchStartY: number | null = null;
+  protected reportReason: ReportReason = 'harassment';
+  protected reportDescription = '';
+  protected readonly reportReasons = [
+    { value: 'harassment', label: 'Intimidatie of grensoverschrijdend gedrag' },
+    { value: 'spam_or_scam', label: 'Spam of scam' },
+    { value: 'no_consent', label: 'Geen toestemming' },
+    { value: 'fake_account', label: 'Fake account' },
+    { value: 'prohibited', label: 'Verboden inhoud' },
+    { value: 'underage', label: 'Minderjarig' },
+    { value: 'copyright', label: 'Auteursrecht' },
+    { value: 'other', label: 'Anders' }
+  ] as const;
 
   public ngOnInit(): void {
     const slug = this.route.snapshot.paramMap.get('slug');
@@ -247,6 +320,64 @@ export class ProfileDetailPageComponent implements OnInit {
     this.activeItem.set(null);
   }
 
+  protected isOwnProfile(): boolean {
+    return this.profile()?.user_id === this.session.user()?.id;
+  }
+
+  protected startConversation(): void {
+    const profile = this.profile();
+    if (!profile || this.isOwnProfile()) {
+      return;
+    }
+
+    this.isStartingConversation.set(true);
+    this.error.set(null);
+    this.actionSuccess.set(null);
+    this.api.createConversation(profile.user_id).subscribe({
+      next: conversation => {
+        this.isStartingConversation.set(false);
+        void this.router.navigate(['/chat'], { queryParams: { conversation: conversation.id } });
+      },
+      error: () => {
+        this.error.set('Chat starten is niet gelukt.');
+        this.isStartingConversation.set(false);
+      }
+    });
+  }
+
+  protected toggleReportComposer(): void {
+    this.isReportComposerOpen.update(value => !value);
+    this.error.set(null);
+    this.actionSuccess.set(null);
+  }
+
+  protected submitProfileReport(): void {
+    const profile = this.profile();
+    if (!profile) {
+      return;
+    }
+
+    this.isSubmittingReport.set(true);
+    this.error.set(null);
+    this.api.createReport({
+      target_type: 'profile',
+      target_id: profile.user_id,
+      reason: this.reportReason,
+      description: this.reportDescription.trim() || null
+    }).subscribe({
+      next: () => {
+        this.isSubmittingReport.set(false);
+        this.reportDescription = '';
+        this.isReportComposerOpen.set(false);
+        this.actionSuccess.set('Profiel is gemeld bij de moderation inbox.');
+      },
+      error: () => {
+        this.error.set('Profiel melden is niet gelukt.');
+        this.isSubmittingReport.set(false);
+      }
+    });
+  }
+
   protected showPrevious(): void {
     const current = this.activeIndex();
     if (current === null || current <= 0) {
@@ -261,6 +392,61 @@ export class ProfileDetailPageComponent implements OnInit {
       return;
     }
     this.openLightbox(current + 1);
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  protected onWindowKeydown(event: KeyboardEvent): void {
+    if (this.activeIndex() === null) {
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.closeLightbox();
+      return;
+    }
+
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      this.showPrevious();
+      return;
+    }
+
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      this.showNext();
+    }
+  }
+
+  protected onTouchStart(event: TouchEvent): void {
+    const touch = event.changedTouches[0];
+    if (!touch) {
+      return;
+    }
+    this.touchStartX = touch.clientX;
+    this.touchStartY = touch.clientY;
+  }
+
+  protected onTouchEnd(event: TouchEvent): void {
+    const touch = event.changedTouches[0];
+    if (!touch || this.touchStartX === null || this.touchStartY === null) {
+      return;
+    }
+
+    const deltaX = touch.clientX - this.touchStartX;
+    const deltaY = touch.clientY - this.touchStartY;
+    this.touchStartX = null;
+    this.touchStartY = null;
+
+    if (Math.abs(deltaX) < 40 || Math.abs(deltaX) < Math.abs(deltaY)) {
+      return;
+    }
+
+    if (deltaX > 0) {
+      this.showPrevious();
+    } else {
+      this.showNext();
+    }
   }
 
   protected initials(value: string): string {
