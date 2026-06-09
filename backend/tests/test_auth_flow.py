@@ -1,10 +1,12 @@
 import re
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from app.auth.models import UserSession
+from app.core.config import get_settings
 
 EMAIL = "test@example.com"
 PASSWORD = "strong-pass"
@@ -34,6 +36,27 @@ def _headers(access_value: str) -> dict[str, str]:
 def test_registration_requires_ten_character_password(client: TestClient) -> None:
     response = client.post("/api/v1/auth/register", json={"email": EMAIL, "password": "short"})
     assert response.status_code == 422
+
+
+def test_registration_can_auto_verify_when_flag_is_enabled(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AUTO_VERIFY_NEW_USERS", "true")
+    get_settings.cache_clear()
+
+    response = client.post("/api/v1/auth/register", json={"email": "autoverify@example.com", "password": PASSWORD})
+    assert response.status_code == 201
+    assert response.json()["email_verified"] is True
+
+    login = client.post("/api/v1/auth/login", json={"email": "autoverify@example.com", "password": PASSWORD})
+    assert login.status_code == 200
+
+    access_value = login.json()["access_value"]
+    response = client.get("/api/v1/profiles/me", headers=_headers(access_value))
+    assert response.status_code == 404
+
+    get_settings.cache_clear()
 
 
 def test_verified_account_can_complete_onboarding_and_logout(

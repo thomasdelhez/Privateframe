@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     session_expire_days: int = 7
     email_verification_expire_hours: int = 24
     password_reset_expire_minutes: int = 60
+    auto_verify_new_users: bool = False
     auth_rate_limit_attempts: int = 10
     auth_rate_limit_window_seconds: int = 60
     cors_origins: str = "http://localhost:4200"

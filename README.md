@@ -58,6 +58,9 @@ python3 -m venv .venv
 Met `EMAIL_BACKEND=console` worden verificatie- en resetlinks in de backendlog geschreven. Met Docker gaan ze
 naar Mailpit.
 
+Voor testomgevingen zonder echte mailbezorging kun je `AUTO_VERIFY_NEW_USERS=true` zetten. Nieuwe accounts worden
+dan direct als geverifieerd aangemaakt.
+
 ## Kwaliteitscontroles
 
 ```bash

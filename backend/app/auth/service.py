@@ -39,11 +39,19 @@ def register_user(payload: RegisterRequest, session: Session) -> User:
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="E-mailadres is al geregistreerd")
 
-    user = User(email=payload.email.lower(), password_hash=make_hash(payload.password))
+    settings = get_settings()
+    now = datetime.now(UTC)
+    user = User(
+        email=payload.email.lower(),
+        password_hash=make_hash(payload.password),
+        email_verified_at=now if settings.auto_verify_new_users else None,
+        updated_at=now,
+    )
     session.add(user)
     session.commit()
     session.refresh(user)
-    send_verification_email(user, session)
+    if not settings.auto_verify_new_users:
+        send_verification_email(user, session)
     return user
 
 
