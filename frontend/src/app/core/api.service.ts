@@ -7,7 +7,7 @@ import { CurrentUser, SessionService } from './session.service';
 export class ApiService {
   private readonly http = inject(HttpClient);
   private readonly session = inject(SessionService);
-  private readonly baseUrl = 'http://localhost:8000/api/v1';
+  private readonly baseUrl = 'http://127.0.0.1:8000/api/v1';
 
   public register(email: string, password: string): Observable<CurrentUser> {
     return this.http.post<CurrentUser>(`${this.baseUrl}/auth/register`, { email, password });
@@ -25,6 +25,10 @@ export class ApiService {
     return this.http.get<Profile[]>(`${this.baseUrl}/profiles`, { headers: this.headers() });
   }
 
+  public getMyProfile(): Observable<Profile> {
+    return this.http.get<Profile>(`${this.baseUrl}/profiles/me`, { headers: this.headers() });
+  }
+
   public saveMyProfile(payload: ProfileSave): Observable<Profile> {
     return this.http.put<Profile>(`${this.baseUrl}/profiles/me`, payload, { headers: this.headers() });
   }
@@ -37,8 +41,20 @@ export class ApiService {
     return this.http.post<Post>(`${this.baseUrl}/posts`, payload, { headers: this.headers() });
   }
 
+  public addPlaceholderAsset(postId: string): Observable<Post> {
+    return this.http.post<Post>(`${this.baseUrl}/posts/${postId}/placeholder`, {}, { headers: this.headers() });
+  }
+
+  public getPlanStatus(): Observable<{ status: string; role: string }> {
+    return this.http.get<{ status: string; role: string }>(`${this.baseUrl}/plan/status`, { headers: this.headers() });
+  }
+
   public enablePremium(): Observable<CurrentUser> {
     return this.http.post<CurrentUser>(`${this.baseUrl}/plan/enable`, {}, { headers: this.headers() });
+  }
+
+  public disablePremium(): Observable<CurrentUser> {
+    return this.http.post<CurrentUser>(`${this.baseUrl}/plan/disable`, {}, { headers: this.headers() });
   }
 
   private headers(): HttpHeaders {
@@ -79,5 +95,5 @@ export interface Post {
   description: string | null;
   status: string;
   created_at: string;
-  assets: { id: string; locked: boolean }[];
+  assets: { id: string; locked: boolean; preview_url?: string | null; full_url?: string | null }[];
 }
