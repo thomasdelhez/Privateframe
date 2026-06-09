@@ -69,7 +69,7 @@ def test_uploaded_asset_has_preview_and_full_access_rules(
     assert posts_for_viewer.json()[0]["assets"][0]["url"] is None
     assert posts_for_viewer.json()[0]["assets"][0]["preview_url"] == f"/api/v1/posts/assets/{asset_id}/preview"
 
-    preview = client.get(f"/api/v1/posts/assets/{asset_id}/preview", headers=_headers(viewer_access))
+    preview = client.get(f"/api/v1/posts/assets/{asset_id}/preview")
     assert preview.status_code == 200
     assert preview.headers["content-type"] == "image/png"
 

@@ -74,8 +74,8 @@ def read_asset(asset_id: UUID, user: AgeConfirmedUserDep, session: SessionDep) -
 
 
 @router.get("/assets/{asset_id}/preview")
-def read_asset_preview(asset_id: UUID, user: AgeConfirmedUserDep, session: SessionDep) -> FileResponse:
+def read_asset_preview(asset_id: UUID, session: SessionDep) -> FileResponse:
     asset = get_asset(asset_id, session)
-    assert_can_view_asset(asset, user, session, preview=True)
+    get_post(asset.post_id, session)
     path = get_asset_file_path(asset, preview=True)
     return FileResponse(path, media_type=asset.mime_type, filename=guess_download_name(asset))
