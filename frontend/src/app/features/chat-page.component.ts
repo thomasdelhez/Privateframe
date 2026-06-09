@@ -124,25 +124,27 @@ import { SessionService } from '../core/session.service';
               </form>
             }
 
-            @if (isLoadingMessages()) {
-              <p>Berichten laden...</p>
-            } @else {
-              <div class="messages">
-                @if (messages().length === 0) {
-                  <p class="muted">Nog geen berichten in dit gesprek.</p>
-                } @else {
-                  @for (message of messages(); track message.id) {
-                    <article class="message" [class.own]="message.sender_id === currentUserId()">
-                      <div class="message-meta">
-                        <strong>{{ message.sender_id === currentUserId() ? 'Jij' : participantName(conversation) }}</strong>
-                        <span>{{ formatDate(message.created_at) }}</span>
-                      </div>
-                      <p>{{ message.body }}</p>
-                    </article>
+            <div class="thread-body">
+              @if (isLoadingMessages()) {
+                <p>Berichten laden...</p>
+              } @else {
+                <div class="messages">
+                  @if (messages().length === 0) {
+                    <p class="muted">Nog geen berichten in dit gesprek.</p>
+                  } @else {
+                    @for (message of messages(); track message.id) {
+                      <article class="message" [class.own]="message.sender_id === currentUserId()">
+                        <div class="message-meta">
+                          <strong>{{ message.sender_id === currentUserId() ? 'Jij' : participantName(conversation) }}</strong>
+                          <span>{{ formatDate(message.created_at) }}</span>
+                        </div>
+                        <p>{{ message.body }}</p>
+                      </article>
+                    }
                   }
-                }
-              </div>
-            }
+                </div>
+              }
+            </div>
 
             <form class="composer" (ngSubmit)="sendMessage()">
               <label class="sr-only" for="chat-message">Bericht</label>
@@ -153,6 +155,7 @@ import { SessionService } from '../core/session.service';
                 rows="3"
                 maxlength="2000"
                 placeholder="Typ je bericht..."
+                (keydown)="onComposerKeydown($event)"
                 [disabled]="conversation.status !== 'active' || isSendingMessage()"></textarea>
               <button type="submit" [disabled]="conversation.status !== 'active' || isSendingMessage() || !messageBody.trim()">
                 {{ isSendingMessage() ? 'Versturen...' : 'Verstuur bericht' }}
@@ -216,12 +219,15 @@ import { SessionService } from '../core/session.service';
     .pill { border-radius: 999px; background: rgba(148, 163, 184, .12); border: 1px solid rgba(148, 163, 184, .14); color: #e2e8f0; padding: .28rem .65rem; font-size: .82rem; font-weight: 700; }
     .pill.warn { color: #fcd34d; border-color: rgba(251, 191, 36, .25); }
     .pill.good { color: #86efac; border-color: rgba(34, 197, 94, .22); }
-    .messages { display: grid; gap: .75rem; min-height: 280px; margin: 1rem 0; }
+    .thread { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 1rem; min-height: 0; max-height: min(78vh, 920px); }
+    .thread-body { min-height: 0; overflow: hidden; }
+    .messages { display: grid; gap: .75rem; min-height: 0; height: 100%; overflow-y: auto; padding-right: .2rem; }
     .message { display: grid; gap: .45rem; max-width: 80%; padding: .85rem 1rem; border-radius: 1rem; border: 1px solid rgba(148, 163, 184, .14); background: rgba(15, 23, 42, .92); }
     .message.own { margin-left: auto; background: linear-gradient(135deg, rgba(91, 33, 182, .28), rgba(15, 23, 42, .96)); border-color: rgba(192, 132, 252, .28); }
     .message-meta { display: flex; justify-content: space-between; gap: .75rem; color: #cbd5e1; font-size: .9rem; }
     .message p, .report-item p { margin: 0; }
     .composer, .report-box { display: grid; gap: .75rem; }
+    .composer { margin-top: auto; }
     textarea, select { width: 100%; border: 1px solid rgba(148, 163, 184, .2); border-radius: .85rem; background: rgba(15, 23, 42, .95); color: #f8fafc; padding: .85rem .95rem; }
     .thread-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
     .report-box { margin: 1rem 0; padding: 1rem; border-radius: 1rem; border: 1px solid rgba(148, 163, 184, .14); background: rgba(15, 23, 42, .7); }
@@ -241,6 +247,8 @@ import { SessionService } from '../core/session.service';
       .hero, .layout, .thread-head, .panel-head, .report-row { display: grid; }
       .thread-empty { min-height: auto; }
       .message { max-width: 100%; }
+      .thread { max-height: none; }
+      .messages { max-height: 48vh; }
     }
   `]
 })
@@ -401,6 +409,18 @@ export class ChatPageComponent implements OnInit, OnDestroy {
         this.isSendingMessage.set(false);
       }
     });
+  }
+
+  protected onComposerKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter' || event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+    if (!this.messageBody.trim() || this.isSendingMessage() || this.selectedConversation()?.status !== 'active') {
+      return;
+    }
+    this.sendMessage();
   }
 
   protected blockSelectedConversation(): void {
