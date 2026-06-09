@@ -36,6 +36,15 @@
 - Premiumgebruikers zien welke profielen hen bekeken; gratis accounts zien alleen anonieme meldingen.
 - Backendtests dekken discoveryfilters en profielbezoekerslogica.
 
+## Afgerond: Sprint 4
+
+- Kaartjes ondersteunen echte media-upload via multipart in plaats van demo-assets.
+- Uploads worden lokaal opgeslagen via `MEDIA_STORAGE_PATH` en via de API als preview/full asset geserveerd.
+- Eigenaren zien hun eigen media volledig; gratis kijkers zien previews en premium ziet volledige assets.
+- De itemspagina ondersteunt directe beeldupload en toont previews van geüploade bestanden.
+- De profiel- en discoverypagina's zijn visueel bijgewerkt naar een donkerder thema dat beter aansluit op de rest van de app.
+- Backendtests dekken upload, previewtoegang en premium/full-accessregels.
+
 ## Bestaande platformbasis
 
 - Profielen, unieke slugs, discovery en profielbezoekersregistratie.
@@ -47,8 +56,7 @@
 
 ## Volgende productstappen
 
-1. Echte media-upload en opslag toevoegen.
-2. Chatfrontend bouwen.
-3. Moderatie- en adminfrontend bouwen.
-4. Echte abonnementsbetalingen integreren.
-5. Productie-hardening, privacy en compliance uitvoeren.
+1. Chatfrontend bouwen.
+2. Moderatie- en adminfrontend bouwen.
+3. Echte abonnementsbetalingen integreren.
+4. Productie-hardening, privacy en compliance uitvoeren.

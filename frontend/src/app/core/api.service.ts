@@ -87,8 +87,12 @@ export class ApiService {
     return this.http.post<Post>(`${this.baseUrl}/posts`, payload, { headers: this.headers() });
   }
 
-  public addPlaceholderAsset(postId: string): Observable<Post> {
-    return this.http.post<Post>(`${this.baseUrl}/posts/${postId}/placeholder`, {}, { headers: this.headers() });
+  public uploadPostAsset(postId: string, file: File): Observable<PostAssetUploadResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<PostAssetUploadResponse>(`${this.baseUrl}/posts/${postId}/assets`, formData, {
+      headers: this.headers()
+    });
   }
 
   public getPlanStatus(): Observable<{ status: string; role: string }> {
@@ -159,6 +163,11 @@ export interface Post {
   status: string;
   created_at: string;
   assets: { id: string; locked: boolean; preview_url?: string | null; url?: string | null }[];
+}
+
+export interface PostAssetUploadResponse {
+  post: Post;
+  asset: { id: string; locked: boolean; preview_url?: string | null; url?: string | null };
 }
 
 export interface MessageResponse {

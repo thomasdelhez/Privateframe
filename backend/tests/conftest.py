@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
+from app.core.config import get_settings
 from app.core.database import get_session
 from app.core.rate_limit import clear_rate_limits
 from app.main import app
@@ -45,3 +46,15 @@ def outbox(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, str]]:
 
     monkeypatch.setattr("app.auth.service.send_email", capture_email)
     return messages
+
+
+@pytest.fixture(autouse=True)
+def media_storage(
+    tmp_path_factory: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Generator[None, None, None]:
+    media_dir = tmp_path_factory.mktemp("media")
+    monkeypatch.setenv("MEDIA_STORAGE_PATH", str(media_dir))
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()

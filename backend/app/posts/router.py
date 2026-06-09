@@ -1,10 +1,22 @@
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, File, Request, UploadFile
+from fastapi.responses import FileResponse
 
 from app.auth.dependencies import AgeConfirmedUserDep, SessionDep
-from app.posts.schemas import PostCreateRequest, PostResponse
-from app.posts.service import add_demo_asset, create_post, get_post, list_posts, to_post_response
+from app.posts.schemas import AssetUploadResponse, PostCreateRequest, PostResponse
+from app.posts.service import (
+    assert_can_view_asset,
+    create_post,
+    get_asset,
+    get_asset_file_path,
+    get_post,
+    guess_download_name,
+    list_posts,
+    save_uploaded_asset,
+    to_post_response,
+)
 
 router = APIRouter(prefix="/posts", tags=["Posts"])
 
@@ -30,7 +42,40 @@ def read_post(post_id: UUID, user: AgeConfirmedUserDep, session: SessionDep) -> 
     return to_post_response(get_post(post_id, session), user, session)
 
 
-@router.post("/{post_id}/placeholder", response_model=PostResponse)
-def add_placeholder(post_id: UUID, user: AgeConfirmedUserDep, session: SessionDep) -> PostResponse:
-    add_demo_asset(post_id, user, session)
-    return to_post_response(get_post(post_id, session), user, session)
+@router.post("/{post_id}/assets", response_model=AssetUploadResponse)
+async def upload_asset(
+    post_id: UUID,
+    user: AgeConfirmedUserDep,
+    session: SessionDep,
+    file: Annotated[UploadFile, File(...)],
+) -> AssetUploadResponse:
+    save_uploaded_asset(
+        post_id=post_id,
+        user=user,
+        session=session,
+        filename=file.filename,
+        content_type=file.content_type,
+        content=await file.read(),
+    )
+    post = get_post(post_id, session)
+    post_response = to_post_response(post, user, session)
+    return AssetUploadResponse(
+        asset=post_response.assets[-1],
+        post=post_response,
+    )
+
+
+@router.get("/assets/{asset_id}")
+def read_asset(asset_id: UUID, user: AgeConfirmedUserDep, session: SessionDep) -> FileResponse:
+    asset = get_asset(asset_id, session)
+    assert_can_view_asset(asset, user, session, preview=False)
+    path = get_asset_file_path(asset, preview=False)
+    return FileResponse(path, media_type=asset.mime_type, filename=guess_download_name(asset))
+
+
+@router.get("/assets/{asset_id}/preview")
+def read_asset_preview(asset_id: UUID, user: AgeConfirmedUserDep, session: SessionDep) -> FileResponse:
+    asset = get_asset(asset_id, session)
+    assert_can_view_asset(asset, user, session, preview=True)
+    path = get_asset_file_path(asset, preview=True)
+    return FileResponse(path, media_type=asset.mime_type, filename=guess_download_name(asset))

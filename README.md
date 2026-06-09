@@ -1,7 +1,8 @@
 # PrivateFrame
 
 PrivateFrame is een Nederlandse private social discovery-MVP met accounts, e-mailverificatie, profielen,
-uitgebreide discovery, profielbezoekers, contentkaartjes, premiumtoegang en een backendbasis voor chat en moderatie.
+uitgebreide discovery, profielbezoekers, contentkaartjes, echte media-uploads, premiumtoegang en een backendbasis
+voor chat en moderatie.
 
 ## Stack
 
@@ -107,13 +108,19 @@ De productieomgeving staat in `/etc/privateframe/backend.env` op de server en wo
 - De profielpagina toont recente profielbezoeken.
 - Gratis accounts zien profielbezoeken anoniem; premium ziet ook welk profiel heeft gekeken.
 
+## Media-uploads
+
+- Kaartjes ondersteunen image-upload via de frontend voor `jpg`, `png`, `webp` en `gif`.
+- Uploads tot 10 MB worden lokaal opgeslagen onder `MEDIA_STORAGE_PATH`.
+- De API serveert altijd een preview-URL; volledige media is zichtbaar voor de eigenaar en voor premiumaccounts.
+
 Sessies zijn zeven dagen geldig, kunnen met logout worden ingetrokken en worden allemaal ingetrokken na een
 wachtwoordreset. Login-, registratie- en herstelendpoints hebben basis-rate-limiting.
 
 ## Nog niet productieklaar
 
 - Leeftijdscontrole is nog een eenvoudige bevestiging.
-- Betalingen en media-upload zijn nog gemockt.
+- Betalingen zijn nog gemockt.
 - De rate limiter is procesgebonden; productie vraagt een gedeelde opslag zoals Redis.
 - Chat, reports en adminfuncties bestaan als API maar hebben nog geen volledige frontend.
 - Voor productie zijn onder meer echte e-mailbezorging, secrets, monitoring en formeel privacy- en

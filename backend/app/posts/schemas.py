@@ -42,3 +42,8 @@ class PostResponse(BaseModel):
 
 class UploadResponse(BaseModel):
     asset: MediaItemResponse
+
+
+class AssetUploadResponse(BaseModel):
+    post: PostResponse
+    asset: MediaItemResponse

@@ -135,7 +135,11 @@ def test_placeholder_endpoint_returns_updated_post(
     assert response.status_code == 200
     post_id = response.json()["id"]
 
-    response = client.post(f"/api/v1/posts/{post_id}/placeholder", headers=_headers(access_value))
+    response = client.post(
+        f"/api/v1/posts/{post_id}/assets",
+        headers=_headers(access_value),
+        files={"file": ("preview.png", b"\x89PNG\r\n\x1a\nsmall-image", "image/png")},
+    )
     assert response.status_code == 200
-    assert response.json()["id"] == post_id
-    assert len(response.json()["assets"]) == 1
+    assert response.json()["post"]["id"] == post_id
+    assert response.json()["asset"]["preview_url"] == f"/api/v1/posts/assets/{response.json()['asset']['id']}/preview"
