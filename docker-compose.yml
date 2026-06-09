@@ -1,0 +1,40 @@
+services:
+  database:
+    image: postgres:16-alpine
+    container_name: privateframe-db
+    environment:
+      POSTGRES_DB: privateframe
+      POSTGRES_USER: privateframe
+      POSTGRES_PASSWORD: privateframe
+    ports:
+      - "5432:5432"
+    volumes:
+      - privateframe_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U privateframe -d privateframe"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    container_name: privateframe-backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://privateframe:privateframe@database:5432/privateframe
+      JWT_SECRET_KEY: change-me-in-production
+      ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+      CORS_ORIGINS: http://localhost:4200
+      MEDIA_STORAGE_PATH: /app/media
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app
+      - privateframe_media:/app/media
+    depends_on:
+      database:
+        condition: service_healthy
+
+volumes:
+  privateframe_postgres:
+  privateframe_media:
