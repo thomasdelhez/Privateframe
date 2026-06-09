@@ -24,7 +24,7 @@ def _register_and_enable_premium(client, outbox, email: str, password: str) -> t
 
 
 def test_chat_unread_counts_and_mark_read(client, outbox) -> None:
-    token_a, user_a_id = _register_and_enable_premium(client, outbox, "a@example.com", "secret12345")
+    token_a, _ = _register_and_enable_premium(client, outbox, "a@example.com", "secret12345")
     token_b, user_b_id = _register_and_enable_premium(client, outbox, "b@example.com", "secret12345")
 
     headers_a = {"Authorization": f"Bearer {token_a}"}
@@ -70,3 +70,57 @@ def test_chat_cannot_mark_unknown_conversation_read(client, outbox) -> None:
     headers_a = {"Authorization": f"Bearer {token_a}"}
     response = client.post(f"/api/v1/chat/{uuid4()}/read", headers=headers_a)
     assert response.status_code == 404
+
+
+def test_chat_can_block_and_unblock_conversation(client, outbox) -> None:
+    token_a, _ = _register_and_enable_premium(client, outbox, "f@example.com", "secret12345")
+    token_b, user_b_id = _register_and_enable_premium(client, outbox, "g@example.com", "secret12345")
+
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+    conversation = client.post("/api/v1/chat", json={"other_user_id": user_b_id}, headers=headers_a).json()
+    conversation_id = conversation["id"]
+
+    blocked = client.post(f"/api/v1/chat/{conversation_id}/block", headers=headers_a)
+    assert blocked.status_code == 200
+    assert blocked.json()["status"] == "blocked"
+
+    unblocked = client.post(f"/api/v1/chat/{conversation_id}/unblock", headers=headers_a)
+    assert unblocked.status_code == 200
+    assert unblocked.json()["status"] == "active"
+
+
+def test_chat_websocket_receives_live_events(client, outbox) -> None:
+    token_a, _ = _register_and_enable_premium(client, outbox, "d@example.com", "secret12345")
+    token_b, user_b_id = _register_and_enable_premium(client, outbox, "e@example.com", "secret12345")
+
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+    conversation = client.post("/api/v1/chat", json={"other_user_id": user_b_id}, headers=headers_a).json()
+    conversation_id = conversation["id"]
+
+    with client.websocket_connect(f"/api/v1/chat/ws?token={token_b}") as websocket:
+        first = websocket.receive_json()
+        assert first["type"] == "unread_summary"
+        assert first["unread_count"] == 0
+
+        sent = client.post(
+            f"/api/v1/chat/{conversation_id}/messages",
+            json={"body": "Live bericht"},
+            headers=headers_a,
+        )
+        assert sent.status_code == 200
+
+        received_types = set()
+        unread_count = None
+        message_body = None
+        for _ in range(3):
+            event = websocket.receive_json()
+            received_types.add(event["type"])
+            if event["type"] == "message_created":
+                message_body = event["message"]["body"]
+            if event["type"] == "unread_summary":
+                unread_count = event["unread_count"]
+
+        assert "message_created" in received_types
+        assert "conversation_updated" in received_types
+        assert message_body == "Live bericht"
+        assert unread_count == 1

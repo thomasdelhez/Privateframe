@@ -125,6 +125,10 @@ export class ApiService {
     return this.http.post<Conversation>(`${this.baseUrl}/chat/${conversationId}/block`, {}, { headers: this.headers() });
   }
 
+  public unblockConversation(conversationId: string): Observable<Conversation> {
+    return this.http.post<Conversation>(`${this.baseUrl}/chat/${conversationId}/unblock`, {}, { headers: this.headers() });
+  }
+
   public createReport(payload: ReportCreate): Observable<ReportItem> {
     return this.http.post<ReportItem>(`${this.baseUrl}/reports`, payload, { headers: this.headers() });
   }

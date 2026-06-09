@@ -19,9 +19,7 @@ def get_current_session(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Niet ingelogd")
 
     key = authorization.removeprefix("Bearer ").strip()
-    user_session = session.exec(select(UserSession).where(UserSession.value == key)).first()
-    if not user_session or user_session.revoked_at is not None or _as_utc(user_session.expires_at) <= datetime.now(UTC):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessie is ongeldig of verlopen")
+    user_session = get_valid_user_session_by_value(session, key)
     return user_session
 
 
@@ -29,10 +27,7 @@ CurrentSessionDep = Annotated[UserSession, Depends(get_current_session)]
 
 
 def get_current_user(user_session: CurrentSessionDep, session: SessionDep) -> User:
-    user = session.get(User, user_session.user_id)
-    if not user or user.status == UserStatus.BANNED:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Geen toegang")
-    return user
+    return get_active_user_by_id(session, user_session.user_id)
 
 
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
@@ -76,3 +71,22 @@ AdminUserDep = Annotated[User, Depends(require_admin)]
 
 def _as_utc(value: datetime) -> datetime:
     return value if value.tzinfo else value.replace(tzinfo=UTC)
+
+
+def get_valid_user_session_by_value(session: Session, key: str) -> UserSession:
+    user_session = session.exec(select(UserSession).where(UserSession.value == key)).first()
+    if not user_session or user_session.revoked_at is not None or _as_utc(user_session.expires_at) <= datetime.now(UTC):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessie is ongeldig of verlopen")
+    return user_session
+
+
+def get_active_user_by_id(session: Session, user_id) -> User:
+    user = session.get(User, user_id)
+    if not user or user.status == UserStatus.BANNED:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Geen toegang")
+    return user
+
+
+def get_active_user_by_session_value(session: Session, key: str) -> User:
+    user_session = get_valid_user_session_by_value(session, key)
+    return get_active_user_by_id(session, user_session.user_id)

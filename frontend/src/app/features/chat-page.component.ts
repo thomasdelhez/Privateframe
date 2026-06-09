@@ -1,8 +1,10 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { ApiService, ChatMessage, Conversation, Profile, ReportItem, ReportReason } from '../core/api.service';
 import { ChatPresenceService } from '../core/chat-presence.service';
+import { ChatSocketEvent, ChatSocketService } from '../core/chat-socket.service';
 import { SessionService } from '../core/session.service';
 
 @Component({
@@ -18,7 +20,9 @@ import { SessionService } from '../core/session.service';
         </div>
         <div class="hero-actions">
           <a routerLink="/discover" class="secondary-link">Nieuwe profielen bekijken</a>
-          <button type="button" class="secondary" (click)="refresh()" [disabled]="isLoadingConversations()">Verversen</button>
+          <button type="button" class="secondary" (click)="openReportsModal()">
+            Mijn meldingen
+          </button>
         </div>
       </div>
 
@@ -81,6 +85,10 @@ import { SessionService } from '../core/session.service';
                 @if (conversation.status === 'active') {
                   <button type="button" class="secondary" (click)="blockSelectedConversation()" [disabled]="isBlockingConversation()">
                     {{ isBlockingConversation() ? 'Blokkeren...' : 'Blokkeren' }}
+                  </button>
+                } @else if (conversation.status === 'blocked') {
+                  <button type="button" class="secondary" (click)="unblockSelectedConversation()" [disabled]="isUnblockingConversation()">
+                    {{ isUnblockingConversation() ? 'Deblokkeren...' : 'Deblokkeren' }}
                   </button>
                 }
                 <button type="button" class="secondary" (click)="toggleReportComposer()">
@@ -152,13 +160,18 @@ import { SessionService } from '../core/session.service';
             </form>
           }
         </section>
+      </div>
+    </section>
 
-        <aside class="panel reports">
+    @if (isReportsModalOpen()) {
+      <div class="modal-backdrop" (click)="closeReportsModal()">
+        <section class="modal panel" (click)="$event.stopPropagation()">
           <div class="panel-head">
             <div>
               <h2>Mijn meldingen</h2>
-              <p class="muted">Handig om te zien wat al door jou is doorgezet.</p>
+              <p class="muted">Hier zie je wat je al hebt gemeld en wat de huidige status is.</p>
             </div>
+            <button type="button" class="secondary" (click)="closeReportsModal()">Sluiten</button>
           </div>
 
           @if (isLoadingReports()) {
@@ -181,9 +194,9 @@ import { SessionService } from '../core/session.service';
               }
             </div>
           }
-        </aside>
+        </section>
       </div>
-    </section>
+    }
   `,
   styles: [`
     .flow { display: grid; gap: 1rem; }
@@ -192,7 +205,7 @@ import { SessionService } from '../core/session.service';
     .secondary-link { display: inline-flex; align-items: center; padding: .78rem 1rem; border-radius: 999px; border: 1px solid rgba(148, 163, 184, .2); background: rgba(15, 23, 42, .85); color: #e2e8f0; text-decoration: none; font-weight: 700; }
     .secondary-link:hover { border-color: rgba(251, 191, 36, .45); color: #f8fafc; }
     .eyebrow { margin: 0 0 .25rem; color: #f59e0b; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
-    .layout { display: grid; grid-template-columns: minmax(260px, 300px) minmax(0, 1fr) minmax(260px, 320px); gap: 1rem; align-items: start; }
+    .layout { display: grid; grid-template-columns: minmax(260px, 300px) minmax(0, 1fr); gap: 1rem; align-items: start; }
     .panel { border: 1px solid rgba(148, 163, 184, .14); border-radius: 1.25rem; padding: 1.1rem; background: linear-gradient(180deg, rgba(15, 23, 42, .94), rgba(2, 6, 23, .96)); color: #f8fafc; box-shadow: 0 16px 36px rgba(0, 0, 0, .24); }
     .panel-head, .thread-head, .report-row { display: flex; justify-content: space-between; gap: .75rem; align-items: flex-start; }
     .conversation-list, .report-list { display: grid; gap: .75rem; margin-top: 1rem; }
@@ -214,6 +227,8 @@ import { SessionService } from '../core/session.service';
     .report-box { margin: 1rem 0; padding: 1rem; border-radius: 1rem; border: 1px solid rgba(148, 163, 184, .14); background: rgba(15, 23, 42, .7); }
     .report-item { display: grid; gap: .35rem; padding-top: .75rem; border-top: 1px solid rgba(148, 163, 184, .14); }
     .report-item:first-child { padding-top: 0; border-top: 0; }
+    .modal-backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: 1.5rem; background: rgba(2, 6, 23, .78); backdrop-filter: blur(8px); z-index: 120; }
+    .modal { width: min(720px, 100%); max-height: min(80vh, 900px); overflow: auto; }
     .empty { border: 1px dashed rgba(148, 163, 184, .22); border-radius: 1rem; padding: 1rem; background: rgba(15, 23, 42, .45); }
     .thread-empty { min-height: 420px; place-content: center; }
     .error { color: #fecaca; background: rgba(127, 29, 29, .45); padding: .75rem; border-radius: .5rem; }
@@ -221,7 +236,6 @@ import { SessionService } from '../core/session.service';
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     @media (max-width: 1100px) {
       .layout { grid-template-columns: 280px minmax(0, 1fr); }
-      .reports { grid-column: 1 / -1; }
     }
     @media (max-width: 820px) {
       .hero, .layout, .thread-head, .panel-head, .report-row { display: grid; }
@@ -234,8 +248,9 @@ export class ChatPageComponent implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly chatPresence = inject(ChatPresenceService);
+  private readonly chatSocket = inject(ChatSocketService);
   protected readonly session = inject(SessionService);
-  private pollHandle: number | null = null;
+  private socketSubscription?: Subscription;
 
   protected readonly conversations = signal<Conversation[]>([]);
   protected readonly messages = signal<ChatMessage[]>([]);
@@ -247,8 +262,10 @@ export class ChatPageComponent implements OnInit, OnDestroy {
   protected readonly isLoadingReports = signal(false);
   protected readonly isSendingMessage = signal(false);
   protected readonly isBlockingConversation = signal(false);
+  protected readonly isUnblockingConversation = signal(false);
   protected readonly isSubmittingReport = signal(false);
   protected readonly isReportComposerOpen = signal(false);
+  protected readonly isReportsModalOpen = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly success = signal<string | null>(null);
 
@@ -275,17 +292,12 @@ export class ChatPageComponent implements OnInit, OnDestroy {
     this.loadProfiles();
     this.loadReports();
     this.loadConversations();
-    this.startPolling();
+    this.chatSocket.ensureConnected();
+    this.socketSubscription = this.chatSocket.events$.subscribe(event => this.handleSocketEvent(event));
   }
 
   public ngOnDestroy(): void {
-    this.stopPolling();
-  }
-
-  protected refresh(): void {
-    this.loadProfiles();
-    this.loadReports();
-    this.loadConversations();
+    this.socketSubscription?.unsubscribe();
   }
 
   private loadProfiles(): void {
@@ -412,10 +424,42 @@ export class ChatPageComponent implements OnInit, OnDestroy {
     });
   }
 
+  protected unblockSelectedConversation(): void {
+    const conversation = this.selectedConversation();
+    if (!conversation) {
+      return;
+    }
+
+    this.isUnblockingConversation.set(true);
+    this.api.unblockConversation(conversation.id).subscribe({
+      next: updated => {
+        this.replaceConversation(updated);
+        this.success.set('Gesprek is gedeblokkeerd.');
+        this.isUnblockingConversation.set(false);
+        this.chatPresence.refreshUnreadCount();
+      },
+      error: () => {
+        this.error.set('Deblokkeren is niet gelukt.');
+        this.isUnblockingConversation.set(false);
+      }
+    });
+  }
+
   protected toggleReportComposer(): void {
     this.isReportComposerOpen.update(value => !value);
     this.success.set(null);
     this.error.set(null);
+  }
+
+  protected openReportsModal(): void {
+    this.isReportsModalOpen.set(true);
+    if (!this.isLoadingReports()) {
+      this.loadReports();
+    }
+  }
+
+  protected closeReportsModal(): void {
+    this.isReportsModalOpen.set(false);
   }
 
   protected submitConversationReport(): void {
@@ -498,7 +542,11 @@ export class ChatPageComponent implements OnInit, OnDestroy {
     this.conversations.update(items => {
       const updated = items.map(item =>
         item.id === conversationId
-          ? { ...item, updated_at: new Date().toISOString() }
+          ? {
+              ...item,
+              updated_at: new Date().toISOString(),
+              last_message: this.messages().at(-1) ?? item.last_message
+            }
           : item
       );
       return [...updated].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
@@ -533,34 +581,53 @@ export class ChatPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  private startPolling(): void {
-    if (this.pollHandle !== null) {
+  private handleSocketEvent(event: ChatSocketEvent): void {
+    if (event.type === 'conversation_updated') {
+      this.upsertConversation(event.conversation);
       return;
     }
 
-    this.pollHandle = window.setInterval(() => {
-      this.loadConversations(true);
-      const conversationId = this.selectedConversationId();
-      if (conversationId) {
-        this.api.getConversationMessages(conversationId).subscribe({
-          next: messages => {
-            const currentSerialized = JSON.stringify(this.messages());
-            const nextSerialized = JSON.stringify(messages);
-            if (currentSerialized !== nextSerialized) {
-              this.messages.set(messages);
-            }
-            this.markSelectedConversationRead();
-          },
-          error: () => undefined
-        });
+    if (event.type === 'message_created') {
+      this.appendMessageIfMissing(event.message);
+      if (event.message.conversation_id === this.selectedConversationId() && event.message.sender_id !== this.currentUserId()) {
+        this.markSelectedConversationRead();
       }
-    }, 3000);
+      return;
+    }
+
+    if (event.type === 'messages_read') {
+      if (event.conversation_id !== this.selectedConversationId()) {
+        return;
+      }
+      this.messages.update(items =>
+        items.map(item =>
+          event.message_ids.includes(item.id)
+            ? { ...item, status: 'read', read_at: event.read_at }
+            : item
+        )
+      );
+    }
   }
 
-  private stopPolling(): void {
-    if (this.pollHandle !== null) {
-      window.clearInterval(this.pollHandle);
-      this.pollHandle = null;
+  private upsertConversation(conversation: Conversation): void {
+    this.conversations.update(items => {
+      const withoutCurrent = items.filter(item => item.id !== conversation.id);
+      return [conversation, ...withoutCurrent].sort(
+        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      );
+    });
+  }
+
+  private appendMessageIfMissing(message: ChatMessage): void {
+    if (message.conversation_id !== this.selectedConversationId()) {
+      return;
     }
+
+    this.messages.update(items => {
+      if (items.some(item => item.id === message.id)) {
+        return items;
+      }
+      return [...items, message];
+    });
   }
 }
