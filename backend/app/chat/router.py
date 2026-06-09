@@ -3,11 +3,11 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Body, HTTPException, status
-from sqlmodel import or_, select
+from sqlmodel import and_, func, or_, select
 
 from app.auth.dependencies import PremiumUserDep, SessionDep
 from app.chat.models import Conversation, Message
-from app.core.enums import ConversationStatus
+from app.core.enums import ConversationStatus, MessageStatus
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -20,10 +20,11 @@ def _serialize_message(item: Message) -> dict:
         "body": item.body,
         "status": item.status,
         "created_at": item.created_at,
+        "read_at": item.read_at,
     }
 
 
-def _serialize_conversation(item: Conversation) -> dict:
+def _serialize_conversation(item: Conversation, unread_count: int = 0, last_message: Message | None = None) -> dict:
     return {
         "id": item.id,
         "user_a_id": item.user_a_id,
@@ -31,6 +32,8 @@ def _serialize_conversation(item: Conversation) -> dict:
         "status": item.status,
         "created_at": item.created_at,
         "updated_at": item.updated_at,
+        "unread_count": unread_count,
+        "last_message": _serialize_message(last_message) if last_message else None,
     }
 
 
@@ -39,7 +42,27 @@ def list_conversations(user: PremiumUserDep, session: SessionDep) -> list[dict]:
     conversations = session.exec(
         select(Conversation).where(or_(Conversation.user_a_id == user.id, Conversation.user_b_id == user.id))
     ).all()
-    return [_serialize_conversation(item) for item in conversations]
+
+    response: list[dict] = []
+    for item in conversations:
+        unread_count = session.exec(
+            select(func.count())
+            .select_from(Message)
+            .where(
+                and_(
+                    Message.conversation_id == item.id,
+                    Message.sender_id != user.id,
+                    Message.read_at.is_(None),
+                )
+            )
+        ).one()
+        last_message = session.exec(
+            select(Message)
+            .where(Message.conversation_id == item.id)
+            .order_by(Message.created_at.desc())
+        ).first()
+        response.append(_serialize_conversation(item, unread_count=int(unread_count or 0), last_message=last_message))
+    return response
 
 
 @router.post("")
@@ -74,7 +97,9 @@ def list_messages(conversation_id: UUID, user: PremiumUserDep, session: SessionD
     conversation = session.get(Conversation, conversation_id)
     if not conversation or user.id not in [conversation.user_a_id, conversation.user_b_id]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Gesprek niet gevonden")
-    messages = session.exec(select(Message).where(Message.conversation_id == conversation.id)).all()
+    messages = session.exec(
+        select(Message).where(Message.conversation_id == conversation.id).order_by(Message.created_at)
+    ).all()
     return [_serialize_message(item) for item in messages]
 
 
@@ -99,6 +124,31 @@ def send_message(
     session.commit()
     session.refresh(message)
     return _serialize_message(message)
+
+
+@router.post("/{conversation_id}/read")
+def mark_conversation_read(conversation_id: UUID, user: PremiumUserDep, session: SessionDep) -> dict:
+    conversation = session.get(Conversation, conversation_id)
+    if not conversation or user.id not in [conversation.user_a_id, conversation.user_b_id]:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Gesprek niet gevonden")
+
+    now = datetime.now(UTC)
+    unread_messages = session.exec(
+        select(Message).where(
+            and_(
+                Message.conversation_id == conversation.id,
+                Message.sender_id != user.id,
+                Message.read_at.is_(None),
+            )
+        )
+    ).all()
+    for message in unread_messages:
+        message.read_at = now
+        message.status = MessageStatus.READ
+        session.add(message)
+
+    session.commit()
+    return {"conversation_id": str(conversation.id), "read_count": len(unread_messages)}
 
 
 @router.post("/{conversation_id}/block")

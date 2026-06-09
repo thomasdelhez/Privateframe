@@ -117,6 +117,10 @@ export class ApiService {
     return this.http.post<ChatMessage>(`${this.baseUrl}/chat/${conversationId}/messages`, { body }, { headers: this.headers() });
   }
 
+  public markConversationRead(conversationId: string): Observable<{ conversation_id: string; read_count: number }> {
+    return this.http.post<{ conversation_id: string; read_count: number }>(`${this.baseUrl}/chat/${conversationId}/read`, {}, { headers: this.headers() });
+  }
+
   public blockConversation(conversationId: string): Observable<Conversation> {
     return this.http.post<Conversation>(`${this.baseUrl}/chat/${conversationId}/block`, {}, { headers: this.headers() });
   }
@@ -247,6 +251,8 @@ export interface Conversation {
   status: 'active' | 'blocked' | 'reported';
   created_at: string;
   updated_at: string;
+  unread_count: number;
+  last_message: ChatMessage | null;
 }
 
 export interface ChatMessage {
@@ -256,6 +262,7 @@ export interface ChatMessage {
   body: string;
   status: 'sent' | 'read' | 'removed';
   created_at: string;
+  read_at?: string | null;
 }
 
 export type ReportTargetType = 'profile' | 'post' | 'conversation' | 'message';

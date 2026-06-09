@@ -1,7 +1,8 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService, ChatMessage, Conversation, Profile, ReportItem, ReportReason } from '../core/api.service';
+import { ChatPresenceService } from '../core/chat-presence.service';
 import { SessionService } from '../core/session.service';
 
 @Component({
@@ -229,10 +230,12 @@ import { SessionService } from '../core/session.service';
     }
   `]
 })
-export class ChatPageComponent implements OnInit {
+export class ChatPageComponent implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly chatPresence = inject(ChatPresenceService);
   protected readonly session = inject(SessionService);
+  private pollHandle: number | null = null;
 
   protected readonly conversations = signal<Conversation[]>([]);
   protected readonly messages = signal<ChatMessage[]>([]);
@@ -272,6 +275,11 @@ export class ChatPageComponent implements OnInit {
     this.loadProfiles();
     this.loadReports();
     this.loadConversations();
+    this.startPolling();
+  }
+
+  public ngOnDestroy(): void {
+    this.stopPolling();
   }
 
   protected refresh(): void {
@@ -287,14 +295,19 @@ export class ChatPageComponent implements OnInit {
     });
   }
 
-  private loadConversations(): void {
-    this.isLoadingConversations.set(true);
+  private loadConversations(silent = false): void {
+    if (!silent) {
+      this.isLoadingConversations.set(true);
+    }
     this.error.set(null);
     this.api.getConversations().subscribe({
       next: conversations => {
         const sorted = [...conversations].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
         this.conversations.set(sorted);
-        this.isLoadingConversations.set(false);
+        if (!silent) {
+          this.isLoadingConversations.set(false);
+        }
+        this.chatPresence.refreshUnreadCount();
 
         const requestedId = this.route.snapshot.queryParamMap.get('conversation');
         const nextId = requestedId && sorted.some(item => item.id === requestedId)
@@ -303,11 +316,15 @@ export class ChatPageComponent implements OnInit {
             ? this.selectedConversationId()
             : sorted[0]?.id ?? null;
 
-        this.selectConversation(nextId);
+        if (nextId !== this.selectedConversationId()) {
+          this.selectConversation(nextId);
+        }
       },
       error: () => {
         this.error.set('Gesprekken laden is niet gelukt.');
-        this.isLoadingConversations.set(false);
+        if (!silent) {
+          this.isLoadingConversations.set(false);
+        }
       }
     });
   }
@@ -341,6 +358,7 @@ export class ChatPageComponent implements OnInit {
       next: messages => {
         this.messages.set(messages);
         this.isLoadingMessages.set(false);
+        this.markSelectedConversationRead();
       },
       error: () => {
         this.messages.set([]);
@@ -364,6 +382,7 @@ export class ChatPageComponent implements OnInit {
         this.messageBody = '';
         this.isSendingMessage.set(false);
         this.touchConversation(conversationId);
+        this.chatPresence.refreshUnreadCount();
       },
       error: () => {
         this.error.set('Versturen van je bericht is niet gelukt.');
@@ -384,6 +403,7 @@ export class ChatPageComponent implements OnInit {
         this.replaceConversation(updated);
         this.success.set('Gesprek is geblokkeerd.');
         this.isBlockingConversation.set(false);
+        this.chatPresence.refreshUnreadCount();
       },
       error: () => {
         this.error.set('Blokkeren is niet gelukt.');
@@ -483,5 +503,64 @@ export class ChatPageComponent implements OnInit {
       );
       return [...updated].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
     });
+  }
+
+  private markSelectedConversationRead(): void {
+    const conversationId = this.selectedConversationId();
+    if (!conversationId) {
+      return;
+    }
+
+    this.api.markConversationRead(conversationId).subscribe({
+      next: result => {
+        if (result.read_count > 0) {
+          this.messages.update(items =>
+            items.map(item =>
+              item.sender_id !== this.currentUserId() && !item.read_at
+                ? { ...item, status: 'read', read_at: new Date().toISOString() }
+                : item
+            )
+          );
+        }
+        this.conversations.update(items =>
+          items.map(item =>
+            item.id === conversationId ? { ...item, unread_count: 0 } : item
+          )
+        );
+        this.chatPresence.refreshUnreadCount();
+      },
+      error: () => undefined
+    });
+  }
+
+  private startPolling(): void {
+    if (this.pollHandle !== null) {
+      return;
+    }
+
+    this.pollHandle = window.setInterval(() => {
+      this.loadConversations(true);
+      const conversationId = this.selectedConversationId();
+      if (conversationId) {
+        this.api.getConversationMessages(conversationId).subscribe({
+          next: messages => {
+            const currentSerialized = JSON.stringify(this.messages());
+            const nextSerialized = JSON.stringify(messages);
+            if (currentSerialized !== nextSerialized) {
+              this.messages.set(messages);
+            }
+            this.markSelectedConversationRead();
+          },
+          error: () => undefined
+        });
+      }
+    }, 3000);
+  }
+
+  private stopPolling(): void {
+    if (this.pollHandle !== null) {
+      window.clearInterval(this.pollHandle);
+      this.pollHandle = null;
+    }
   }
 }
