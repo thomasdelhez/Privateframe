@@ -5,8 +5,7 @@ import { AgePageComponent } from './features/age-page.component';
 import { DiscoverPageComponent } from './features/discover-page.component';
 import { ProfilePageComponent } from './features/profile-page.component';
 import { PostsPageComponent } from './features/posts-page.component';
-import { PlanPageComponent } from './features/plan-page.component';
-import { ChatPageComponent } from './features/chat-page.component';
+import { PlanPageComponent } from './features/upgrade-page.component';
 
 export const routes: Routes = [
   { path: '', component: HomePageComponent },
@@ -16,6 +15,5 @@ export const routes: Routes = [
   { path: 'profile', component: ProfilePageComponent },
   { path: 'posts', component: PostsPageComponent },
   { path: 'plan', component: PlanPageComponent },
-  { path: 'chat', component: ChatPageComponent },
   { path: '**', redirectTo: '' }
 ];
