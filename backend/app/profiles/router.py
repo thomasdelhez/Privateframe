@@ -1,0 +1,42 @@
+from fastapi import APIRouter
+
+from app.auth.dependencies import AgeConfirmedUserDep, CurrentUserDep, SessionDep
+from app.profiles.schemas import ProfileResponse, ProfileUpsertRequest, ProfileVisitSummaryResponse
+from app.profiles.service import (
+    get_my_profile,
+    get_profile_by_slug,
+    get_profile_visits,
+    list_profiles,
+    register_profile_view,
+    to_profile_response,
+    upsert_profile,
+)
+
+router = APIRouter(prefix="/profiles", tags=["Profiles"])
+
+
+@router.get("", response_model=list[ProfileResponse])
+def discover_profiles(_: AgeConfirmedUserDep, session: SessionDep) -> list[ProfileResponse]:
+    return [to_profile_response(profile) for profile in list_profiles(session)]
+
+
+@router.get("/me", response_model=ProfileResponse)
+def read_my_profile(user: CurrentUserDep, session: SessionDep) -> ProfileResponse:
+    return to_profile_response(get_my_profile(user, session))
+
+
+@router.put("/me", response_model=ProfileResponse)
+def save_my_profile(payload: ProfileUpsertRequest, user: CurrentUserDep, session: SessionDep) -> ProfileResponse:
+    return to_profile_response(upsert_profile(user, payload, session))
+
+
+@router.get("/me/activity", response_model=ProfileVisitSummaryResponse)
+def read_profile_activity(user: CurrentUserDep, session: SessionDep) -> ProfileVisitSummaryResponse:
+    return get_profile_visits(user, session)
+
+
+@router.get("/{slug}", response_model=ProfileResponse)
+def read_profile(slug: str, user: AgeConfirmedUserDep, session: SessionDep) -> ProfileResponse:
+    profile = get_profile_by_slug(slug, session)
+    register_profile_view(user, profile.user_id, session)
+    return to_profile_response(profile)
