@@ -60,6 +60,7 @@ rm -rf "${RELEASE_DIR}"
 mkdir -p "${RELEASE_DIR}"
 tar -xzf "${ARCHIVE}" -C "${RELEASE_DIR}"
 rm -f "${ARCHIVE}"
+find "${RELEASE_DIR}" -name '._*' -delete
 
 if [[ -d "${BASE_DIR}/media" ]] && [[ -z "$(find "${SHARED_DIR}/media" -mindepth 1 -print -quit)" ]]; then
     cp -a "${BASE_DIR}/media/." "${SHARED_DIR}/media/"
