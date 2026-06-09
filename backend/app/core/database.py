@@ -14,7 +14,6 @@ def init_db() -> None:
     from app.profiles import models as profile_models  # noqa: F401
     from app.posts import models as post_models  # noqa: F401
     from app.chat import models as chat_models  # noqa: F401
-    from app.billing import models as billing_models  # noqa: F401
     from app.reports import models as report_models  # noqa: F401
     from app.audit import models as audit_models  # noqa: F401
 
