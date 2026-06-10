@@ -55,11 +55,11 @@ import { SessionService } from './core/session.service';
     @media (max-width: 820px) {
       .shell-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
       .menu-toggle { display: inline-flex; align-items: center; justify-content: center; }
-      .shell-nav { grid-column: 1 / -1; display: none; justify-content: flex-start; padding-top: .35rem; }
-      .shell-nav.open { display: grid; }
+      .shell-nav { grid-column: 1 / -1; display: none; justify-items: center; width: 100%; padding-top: .75rem; }
+      .shell-nav.open { display: grid; grid-template-columns: minmax(0, 20rem); justify-content: center; }
+      .shell-nav .nav-link, .shell-nav .nav-logout { width: 100%; }
     }
     @media (max-width: 560px) {
-      .nav-link, .nav-logout { width: 100%; }
       .shell-main { padding-top: 1rem; }
     }
   `]
