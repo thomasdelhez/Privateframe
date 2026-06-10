@@ -13,7 +13,6 @@ import { ApiService, AdminPost, AdminReportContext, AdminUser, AuditLogEntry, Ch
           <h1>Moderatie en beheer</h1>
           <p>Je kunt nu doorklikken naar context, profielen en postdetails in plaats van alleen losse IDs te zien.</p>
         </div>
-        <button type="button" class="secondary" (click)="loadAll()" [disabled]="isLoading()">Verversen</button>
       </div>
 
       @if (error()) {
@@ -30,7 +29,7 @@ import { ApiService, AdminPost, AdminReportContext, AdminUser, AuditLogEntry, Ch
         </article>
         <article class="stat">
           <strong>{{ restrictedUsersCount() }}</strong>
-          <span>Restricted / banned</span>
+          <span>Beperkt / geblokkeerd</span>
         </article>
         <article class="stat">
           <strong>{{ flaggedPostsCount() }}</strong>
@@ -38,7 +37,7 @@ import { ApiService, AdminPost, AdminReportContext, AdminUser, AuditLogEntry, Ch
         </article>
         <article class="stat">
           <strong>{{ audit().length }}</strong>
-          <span>Audit events</span>
+          <span>Auditacties</span>
         </article>
       </div>
 
@@ -402,11 +401,38 @@ import { ApiService, AdminPost, AdminReportContext, AdminUser, AuditLogEntry, Ch
     .action-explainer { display: grid; gap: .45rem; color: #cbd5e1; }
     .action-explainer p { margin: 0; }
     @media (max-width: 980px) {
-      .stats, .explain-grid, .grid { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .explain-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 720px) {
-      .hero, .panel-head, .row, .actions { display: grid; }
-      .modal-backdrop { padding: .75rem; }
+      .flow { gap: .8rem; }
+      .hero { display: grid; padding: 1.1rem; border-radius: 1.15rem; }
+      .stats { gap: .65rem; }
+      .stat { min-height: 98px; padding: .8rem; }
+      .stat strong { font-size: 1.55rem; }
+      .stat span { font-size: .86rem; color: #cbd5e1; }
+      .explain-grid { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, 78vw); grid-template-columns: none; overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: inline mandatory; padding: .1rem .1rem .55rem; scrollbar-width: thin; }
+      .mini-card { scroll-snap-align: start; min-height: 140px; }
+      .panel { padding: .85rem; border-radius: 1rem; }
+      .panel-head { display: grid; }
+      .row { display: grid; gap: .55rem; }
+      .row > .pill { justify-self: start; }
+      .item { padding: .85rem; }
+      .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+      .actions > * { width: 100%; min-width: 0; }
+      .item .actions { margin-top: .25rem; }
+      .item-button { border-radius: .9rem; }
+      .modal-backdrop { align-items: end; padding: .6rem; }
+      .modal { width: 100%; max-height: 90dvh; border-radius: 1.25rem 1.25rem .65rem .65rem; padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+      .modal .panel-head { position: sticky; top: -.85rem; z-index: 3; margin: -.85rem -.85rem 0; padding: .9rem; border-bottom: 1px solid rgba(148, 163, 184, .14); background: rgba(2, 6, 23, .97); }
+      .participant-row, .asset-grid { grid-template-columns: 1fr; }
+      .message-item .row { display: flex; justify-content: space-between; }
+    }
+    @media (max-width: 480px) {
+      .actions { grid-template-columns: 1fr; }
+      .context-card { padding: .85rem; }
+      .message-item .row { display: grid; }
     }
   `]
 })

@@ -56,11 +56,19 @@ import { SessionService } from '../core/session.service';
                   class="conversation-item"
                   [class.active]="selectedConversationId() === conversation.id"
                   (click)="selectConversation(conversation.id)">
-                  <div>
+                  <div class="conversation-copy">
+                    <span class="conversation-avatar">{{ participantInitials(conversation) }}</span>
+                    <div>
                     <strong>{{ participantName(conversation) }}</strong>
                     <p class="muted">{{ participantHandle(conversation) }}</p>
+                    </div>
                   </div>
-                  <span class="pill" [class.warn]="conversation.status !== 'active'">{{ statusLabel(conversation.status) }}</span>
+                  <div class="conversation-state">
+                    @if (conversation.unread_count > 0) {
+                      <span class="unread-badge">{{ conversation.unread_count }}</span>
+                    }
+                    <span class="pill" [class.warn]="conversation.status !== 'active'">{{ statusLabel(conversation.status) }}</span>
+                  </div>
                 </button>
               }
             </div>
@@ -158,7 +166,8 @@ import { SessionService } from '../core/session.service';
                 (keydown)="onComposerKeydown($event)"
                 [disabled]="conversation.status !== 'active' || isSendingMessage()"></textarea>
               <button type="submit" [disabled]="conversation.status !== 'active' || isSendingMessage() || !messageBody.trim()">
-                {{ isSendingMessage() ? 'Versturen...' : 'Verstuur bericht' }}
+                <span class="desktop-send-label">{{ isSendingMessage() ? 'Versturen...' : 'Verstuur bericht' }}</span>
+                <span class="mobile-send-label">{{ isSendingMessage() ? 'Bezig...' : 'Verstuur' }}</span>
               </button>
             </form>
           }
@@ -213,6 +222,13 @@ import { SessionService } from '../core/session.service';
     .panel-head, .thread-head, .report-row { display: flex; justify-content: space-between; gap: .75rem; align-items: flex-start; }
     .conversation-list, .report-list { display: grid; gap: .75rem; margin-top: 1rem; }
     .conversation-item { display: flex; justify-content: space-between; gap: .75rem; align-items: center; text-align: left; padding: .95rem; border-radius: 1rem; border: 1px solid rgba(148, 163, 184, .14); background: rgba(15, 23, 42, .82); color: #f8fafc; }
+    .conversation-copy { display: flex; align-items: center; gap: .7rem; min-width: 0; }
+    .conversation-copy > div { min-width: 0; }
+    .conversation-copy strong, .conversation-copy p { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .conversation-copy p { margin: .18rem 0 0; }
+    .conversation-avatar { display: grid; place-items: center; flex: 0 0 auto; width: 2.6rem; height: 2.6rem; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #ec4899 52%, #38bdf8); color: white; font-size: .82rem; font-weight: 900; }
+    .conversation-state { display: grid; justify-items: end; gap: .35rem; flex: 0 0 auto; }
+    .unread-badge { display: grid; place-items: center; min-width: 1.35rem; height: 1.35rem; padding: 0 .35rem; border-radius: 999px; background: #ec4899; color: white; font-size: .72rem; font-weight: 900; }
     .conversation-item.active { border-color: rgba(251, 191, 36, .35); background: rgba(30, 41, 59, .92); }
     .conversation-item:hover { border-color: rgba(251, 191, 36, .25); }
     .muted { color: #94a3b8; }
@@ -227,7 +243,8 @@ import { SessionService } from '../core/session.service';
     .message-meta { display: flex; justify-content: space-between; gap: .75rem; color: #cbd5e1; font-size: .9rem; }
     .message p, .report-item p { margin: 0; }
     .composer, .report-box { display: grid; gap: .75rem; }
-    .composer { margin-top: auto; }
+    .composer { margin-top: auto; padding-top: .85rem; border-top: 1px solid rgba(148, 163, 184, .14); background: rgba(2, 6, 23, .96); }
+    .mobile-send-label { display: none; }
     textarea, select { width: 100%; border: 1px solid rgba(148, 163, 184, .2); border-radius: .85rem; background: rgba(15, 23, 42, .95); color: #f8fafc; padding: .85rem .95rem; }
     .thread-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
     .report-box { margin: 1rem 0; padding: 1rem; border-radius: 1rem; border: 1px solid rgba(148, 163, 184, .14); background: rgba(15, 23, 42, .7); }
@@ -245,10 +262,34 @@ import { SessionService } from '../core/session.service';
     }
     @media (max-width: 820px) {
       .hero, .layout, .thread-head, .panel-head, .report-row { display: grid; }
+      .layout { grid-template-columns: minmax(0, 1fr); }
+      .hero { padding: 1.1rem; border-radius: 1.15rem; }
+      .hero-actions, .thread-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+      .sidebar { padding: .85rem; }
+      .sidebar .panel-head { display: flex; }
+      .conversation-list { grid-auto-flow: column; grid-auto-columns: minmax(210px, 78vw); overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: inline mandatory; padding: 0 .1rem .55rem; margin-top: .75rem; scrollbar-width: thin; }
+      .conversation-item { width: 100%; min-height: 74px; scroll-snap-align: start; padding: .75rem; }
+      .conversation-state .pill { display: none; }
       .thread-empty { min-height: auto; }
       .message { max-width: 100%; }
-      .thread { max-height: none; }
-      .messages { max-height: 48vh; }
+      .thread { min-height: min(620px, calc(100dvh - 8rem)); max-height: none; padding: .9rem; }
+      .thread-body { overflow: visible; }
+      .messages { max-height: 52dvh; padding-right: .1rem; overscroll-behavior: contain; }
+      .composer { position: sticky; bottom: max(.25rem, env(safe-area-inset-bottom)); z-index: 3; margin-inline: -.2rem; padding: .8rem .2rem .2rem; }
+      .composer textarea { min-height: 3.2rem; max-height: 8rem; }
+      .modal-backdrop { align-items: end; padding: .6rem; }
+      .modal { width: 100%; max-height: 88dvh; border-radius: 1.25rem 1.25rem .75rem .75rem; padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+    }
+    @media (max-width: 480px) {
+      .hero-actions, .thread-actions { grid-template-columns: 1fr; }
+      .thread-head { gap: .65rem; }
+      .message { padding: .72rem .8rem; }
+      .message-meta { display: grid; gap: .15rem; }
+      .composer { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+      .composer button { width: auto; min-height: 3.2rem; padding-inline: 1rem; }
+      .desktop-send-label { display: none; }
+      .mobile-send-label { display: inline; }
+      .report-box { padding: .8rem; }
     }
   `]
 })
@@ -517,6 +558,15 @@ export class ChatPageComponent implements OnInit, OnDestroy {
   protected participantHandle(conversation: Conversation): string {
     const profile = this.findParticipantProfile(conversation);
     return profile ? `/${profile.slug}` : this.otherUserId(conversation).slice(0, 8);
+  }
+
+  protected participantInitials(conversation: Conversation): string {
+    return this.participantName(conversation)
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0]?.toUpperCase())
+      .join('') || '?';
   }
 
   protected statusLabel(status: Conversation['status']): string {
