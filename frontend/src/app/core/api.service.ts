@@ -100,6 +100,10 @@ export class ApiService {
     return this.http.post<Post>(`${this.baseUrl}/posts`, payload, { headers: this.headers() });
   }
 
+  public updatePost(postId: string, payload: PostUpdate): Observable<Post> {
+    return this.http.put<Post>(`${this.baseUrl}/posts/${postId}`, payload, { headers: this.headers() });
+  }
+
   public uploadPostAsset(postId: string, file: File): Observable<PostAssetUploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
@@ -322,6 +326,12 @@ export interface PostCreate {
   rule_rights: boolean;
   rule_safe: boolean;
   rule_permission: boolean;
+}
+
+export interface PostUpdate {
+  title: string;
+  description?: string | null;
+  is_private: boolean;
 }
 
 export interface Post {

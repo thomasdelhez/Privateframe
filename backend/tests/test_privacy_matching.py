@@ -120,3 +120,15 @@ def test_hidden_profile_and_private_album_access(client, outbox) -> None:
     assert approved_post["access_status"] == "approved"
     assert approved_post["assets"][0]["locked"] is False
     assert client.get(f"/api/v1/posts/assets/{asset_id}", headers=viewer_headers).status_code == 200
+
+    privacy_update = client.put(
+        f"/api/v1/posts/{post['id']}",
+        headers=owner_headers,
+        json={
+            "title": "Privéset bijgewerkt",
+            "description": "Nu openbaar",
+            "is_private": False,
+        },
+    )
+    assert privacy_update.status_code == 200
+    assert client.get("/api/v1/posts/access/incoming", headers=owner_headers).json() == []

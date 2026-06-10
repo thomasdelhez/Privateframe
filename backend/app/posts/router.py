@@ -10,7 +10,13 @@ from app.auth.dependencies import AgeConfirmedUserDep, SessionDep
 from app.core.enums import AccessRequestStatus
 from app.core.rate_limit import enforce_user_rate_limit
 from app.posts.models import MediaPost, PostAccessRequest
-from app.posts.schemas import AssetUploadResponse, PostAccessRequestResponse, PostCreateRequest, PostResponse
+from app.posts.schemas import (
+    AssetUploadResponse,
+    PostAccessRequestResponse,
+    PostCreateRequest,
+    PostResponse,
+    PostUpdateRequest,
+)
 from app.posts.service import (
     assert_can_view_asset,
     create_post,
@@ -23,6 +29,7 @@ from app.posts.service import (
     list_posts_for_user,
     save_uploaded_asset,
     to_post_response,
+    update_post,
 )
 from app.profiles.models import Profile
 
@@ -57,6 +64,16 @@ def create_new_post(
 @router.get("/{post_id}", response_model=PostResponse)
 def read_post(post_id: UUID, user: AgeConfirmedUserDep, session: SessionDep) -> PostResponse:
     return to_post_response(get_post(post_id, session), user, session)
+
+
+@router.put("/{post_id}", response_model=PostResponse)
+def update_existing_post(
+    post_id: UUID,
+    payload: PostUpdateRequest,
+    user: AgeConfirmedUserDep,
+    session: SessionDep,
+) -> PostResponse:
+    return to_post_response(update_post(post_id, user, payload, session), user, session)
 
 
 @router.post("/{post_id}/assets", response_model=AssetUploadResponse)

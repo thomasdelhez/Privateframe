@@ -88,3 +88,28 @@ def test_uploaded_asset_has_preview_and_full_access_rules(
     assert full_for_owner.status_code == 200
     assert full_for_owner.content.startswith(b"\x89PNG")
     assert preview.content != full_for_owner.content
+
+    update = client.put(
+        f"/api/v1/posts/{post_id}",
+        headers=_headers(owner_access),
+        json={
+            "title": "Bijgewerkte studio set",
+            "description": "Alleen na toestemming",
+            "is_private": True,
+        },
+    )
+    assert update.status_code == 200
+    assert update.json()["title"] == "Bijgewerkte studio set"
+    assert update.json()["description"] == "Alleen na toestemming"
+    assert update.json()["is_private"] is True
+
+    forbidden_update = client.put(
+        f"/api/v1/posts/{post_id}",
+        headers=_headers(viewer_access),
+        json={
+            "title": "Niet toegestaan",
+            "description": None,
+            "is_private": False,
+        },
+    )
+    assert forbidden_update.status_code == 404

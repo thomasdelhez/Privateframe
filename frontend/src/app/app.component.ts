@@ -17,6 +17,9 @@ import { SessionService } from './core/session.service';
       <nav class="shell-nav" [class.open]="isMenuOpen()">
         <a routerLink="/discover" class="nav-link" (click)="closeMenu()">Ontdekken</a>
         <a routerLink="/profile" class="nav-link" (click)="closeMenu()">Profiel</a>
+        @if (session.isLoggedIn()) {
+          <a routerLink="/photos" class="nav-link" (click)="closeMenu()">Mijn foto's</a>
+        }
         @if (session.isPremium()) {
           <a routerLink="/chat" class="nav-link nav-with-badge" (click)="closeMenu()">
             <span>Berichten</span>

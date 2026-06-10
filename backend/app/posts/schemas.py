@@ -19,6 +19,7 @@ class PostCreateRequest(BaseModel):
 class PostUpdateRequest(BaseModel):
     title: str = Field(min_length=2, max_length=160)
     description: str | None = Field(default=None, max_length=1500)
+    is_private: bool
 
 
 class MediaItemResponse(BaseModel):

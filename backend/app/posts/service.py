@@ -1,18 +1,19 @@
 import hashlib
 import io
 import mimetypes
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
 
 from fastapi import HTTPException, status
 from PIL import Image, ImageFilter, UnidentifiedImageError
-from sqlmodel import Session, desc, select
+from sqlmodel import Session, delete, desc, select
 
 from app.auth.models import User
 from app.core.config import get_settings
 from app.core.enums import AccessRequestStatus, PostStatus, UserRole
 from app.posts.models import ConsentConfirmation, MediaAsset, MediaPost, PostAccessRequest
-from app.posts.schemas import MediaItemResponse, PostCreateRequest, PostResponse
+from app.posts.schemas import MediaItemResponse, PostCreateRequest, PostResponse, PostUpdateRequest
 from app.social.service import block_between, blocked_user_ids
 
 ALLOWED_IMAGE_TYPES = {
@@ -125,6 +126,26 @@ def create_post(user: User, payload: PostCreateRequest, session: Session, ip_add
     )
     session.add(confirmation)
     session.commit()
+    return post
+
+
+def update_post(
+    post_id: UUID,
+    user: User,
+    payload: PostUpdateRequest,
+    session: Session,
+) -> MediaPost:
+    post = get_owned_post(post_id, user, session)
+    privacy_changed = post.is_private != payload.is_private
+    post.title = payload.title
+    post.description = payload.description
+    post.is_private = payload.is_private
+    post.updated_at = datetime.now(UTC)
+    session.add(post)
+    if privacy_changed:
+        session.exec(delete(PostAccessRequest).where(PostAccessRequest.post_id == post.id))
+    session.commit()
+    session.refresh(post)
     return post
 
 

@@ -4,6 +4,7 @@ import { LoginPageComponent } from './features/login-page.component';
 import { AgePageComponent } from './features/age-page.component';
 import { DiscoverPageComponent } from './features/discover-page.component';
 import { ProfilePageComponent } from './features/profile-page.component';
+import { MyPhotosPageComponent } from './features/my-photos-page.component';
 import { ProfileDetailPageComponent } from './features/profile-detail-page.component';
 import { PlanPageComponent } from './features/upgrade-page.component';
 import { ChatPageComponent } from './features/chat-page.component';
@@ -23,7 +24,8 @@ export const routes: Routes = [
   { path: 'discover', component: DiscoverPageComponent, canActivate: [authGuard, verifiedGuard, ageGuard] },
   { path: 'discover/:slug', component: ProfileDetailPageComponent, canActivate: [authGuard, verifiedGuard, ageGuard] },
   { path: 'profile', component: ProfilePageComponent, canActivate: [authGuard, verifiedGuard] },
-  { path: 'posts', redirectTo: 'profile', pathMatch: 'full' },
+  { path: 'photos', component: MyPhotosPageComponent, canActivate: [authGuard, verifiedGuard] },
+  { path: 'posts', redirectTo: 'photos', pathMatch: 'full' },
   { path: 'chat', component: ChatPageComponent, canActivate: [authGuard, verifiedGuard, ageGuard, premiumGuard] },
   { path: 'plan', component: PlanPageComponent, canActivate: [authGuard, verifiedGuard] },
   { path: 'admin', component: AdminPageComponent, canActivate: [authGuard, verifiedGuard, adminGuard] },

@@ -4,25 +4,22 @@ import { RouterLink } from '@angular/router';
 import {
   AccountSession,
   ApiService,
-  Post,
-  PostAccessRequest,
   Profile,
   ProfileVisitSummary,
   ReportItem
 } from '../core/api.service';
-import { AuthenticatedImageDirective } from '../core/authenticated-image.directive';
 import { SessionService } from '../core/session.service';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, RouterLink, AuthenticatedImageDirective],
+  imports: [FormsModule, RouterLink],
   template: `
     <section class="card flow">
       <div class="title-row">
         <div>
           <p class="eyebrow">Profiel</p>
-          <h1>Jouw profiel en foto's</h1>
-          <p>Bouw je zichtbare profiel uit, beheer je gallery en volg wie je profiel recent heeft bekeken.</p>
+          <h1>Jouw profiel</h1>
+          <p>Beheer wat andere leden over je zien en volg wie je profiel recent heeft bekeken.</p>
         </div>
         @if (profile(); as item) {
           <a [routerLink]="['/discover', item.slug]" class="secondary-link public-profile-link">Bekijk publiek profiel</a>
@@ -91,99 +88,6 @@ import { SessionService } from '../core/session.service';
               </button>
             </form>
 
-            <article class="panel">
-              <div class="gallery-head">
-                <div>
-                  <h2>Mijn foto's</h2>
-                  <p class="muted">Deze foto's verschijnen op je publieke profielpagina.</p>
-                </div>
-              </div>
-
-              @if (!session.user()?.age_confirmed) {
-                <div class="gate">
-                  <p>Bevestig eerst je leeftijd voordat je foto's kunt uploaden.</p>
-                  <a routerLink="/age" class="secondary-link">Leeftijd bevestigen</a>
-                </div>
-              } @else {
-                <form class="form compact" (ngSubmit)="createPost()">
-                  <label>
-                    Titel
-                    <input name="postTitle" [(ngModel)]="postTitle" maxlength="120" required />
-                  </label>
-
-                  <label>
-                    Beschrijving
-                    <textarea name="postDescription" [(ngModel)]="postDescription" maxlength="1200" rows="3"></textarea>
-                  </label>
-
-                  <label class="privacy-toggle">
-                    <input type="checkbox" name="postPrivate" [(ngModel)]="postPrivate" />
-                    <span>Privéalbum: bezoekers moeten eerst toegang aanvragen</span>
-                  </label>
-
-                  <div class="checks">
-                    <label><input type="checkbox" name="ruleAge" [(ngModel)]="ruleAge" /><span>18+ bevestigd</span></label>
-                    <label><input type="checkbox" name="ruleRights" [(ngModel)]="ruleRights" /><span>Rechten zijn van mij</span></label>
-                    <label><input type="checkbox" name="ruleSafe" [(ngModel)]="ruleSafe" /><span>Geen minderjarigen</span></label>
-                    <label><input type="checkbox" name="rulePermission" [(ngModel)]="rulePermission" /><span>Toestemming bevestigd</span></label>
-                  </div>
-
-                  <button type="submit" [disabled]="isSavingPost() || !canCreatePost()">
-                    {{ isSavingPost() ? 'Aanmaken...' : 'Fotoalbum aanmaken' }}
-                  </button>
-                </form>
-
-                @if (isLoadingGallery()) {
-                  <p>Foto's laden...</p>
-                } @else if (gallery().length === 0) {
-                  <p class="muted">Nog geen foto's geüpload.</p>
-                } @else {
-                  <div class="gallery-grid">
-                    @for (post of gallery(); track post.id) {
-                      <article class="gallery-card">
-                        <div class="gallery-card-head">
-                          <div>
-                            <h3>{{ post.title }}</h3>
-                            @if (post.description) { <p class="muted">{{ post.description }}</p> }
-                          </div>
-                          <label class="upload-label">
-                            <span>{{ isUploadingFor(post.id) ? 'Uploaden...' : 'Foto toevoegen' }}</span>
-                            <input
-                              type="file"
-                              accept="image/jpeg,image/png,image/webp,image/gif"
-                              [disabled]="isUploadingFor(post.id)"
-                              (change)="uploadFile(post.id, $event)"
-                            />
-                          </label>
-                        </div>
-
-                        @if (post.assets.length > 0) {
-                          <div class="asset-grid">
-                            @for (asset of post.assets; track asset.id) {
-                              <figure class="asset-item">
-                                <img
-                                  [appAuthenticatedSrc]="asset.url"
-                                  [previewSrc]="asset.preview_url"
-                                  alt="Geuploade foto"
-                                />
-                                <figcaption>
-                                  <span class="pill">{{ asset.locked ? 'preview' : 'volledig zichtbaar' }}</span>
-                                  <button type="button" class="secondary compact-button" (click)="togglePhoto(post, asset.id)">
-                                    {{ asset.hidden ? 'Weergeven' : 'Verbergen' }}
-                                  </button>
-                                </figcaption>
-                              </figure>
-                            }
-                          </div>
-                        } @else {
-                          <p class="muted">Nog geen foto's in deze reeks.</p>
-                        }
-                      </article>
-                    }
-                  </div>
-                }
-              }
-            </article>
           </div>
 
           <div class="side-column">
@@ -246,33 +150,6 @@ import { SessionService } from '../core/session.service';
                     }
                   </div>
                 }
-              }
-            </article>
-
-            <article class="panel">
-              <h2>Fotoverzoeken</h2>
-              <p class="muted">Bepaal wie je privéalbums volledig mag bekijken.</p>
-              @if (isLoadingAccessRequests()) {
-                <p>Verzoeken laden...</p>
-              } @else if (accessRequests().length === 0) {
-                <p class="muted">Er zijn nog geen toegangsverzoeken.</p>
-              } @else {
-                <div class="activity-list">
-                  @for (request of accessRequests(); track request.id) {
-                    <div class="activity-item request-item">
-                      <div>
-                        <strong>{{ request.requester_display_name || 'Onbekend profiel' }}</strong>
-                        <p class="muted">{{ request.post_title }} · {{ request.status }}</p>
-                      </div>
-                      @if (request.status === 'pending') {
-                        <div class="compact-actions">
-                          <button type="button" (click)="decideAccess(request, 'approve')">Toestaan</button>
-                          <button type="button" class="secondary" (click)="decideAccess(request, 'deny')">Weigeren</button>
-                        </div>
-                      }
-                    </div>
-                  }
-                </div>
               }
             </article>
 
@@ -356,19 +233,14 @@ import { SessionService } from '../core/session.service';
     .main-column, .side-column { display: grid; gap: 1rem; }
     .panel { border: 1px solid rgba(148, 163, 184, .14); border-radius: 1.25rem; padding: 1.1rem; background: linear-gradient(180deg, rgba(15, 23, 42, .94), rgba(2, 6, 23, .96)); color: #f8fafc; box-shadow: 0 16px 36px rgba(0, 0, 0, .24); }
     .form { display: grid; gap: 1rem; }
-    .compact { margin-top: 1rem; }
     .form h2, .panel h2, .panel h3 { margin-top: 0; }
     label { display: grid; gap: .35rem; color: #cbd5e1; font-weight: 600; }
     input, textarea { width: 100%; border: 1px solid rgba(148, 163, 184, .2); border-radius: .85rem; background: rgba(15, 23, 42, .95); color: #f8fafc; padding: .85rem .95rem; }
     textarea { resize: vertical; }
     .duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
-    .checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
-    .checks label { display: flex; align-items: center; gap: .65rem; min-width: 0; padding: .7rem .8rem; border: 1px solid rgba(148, 163, 184, .14); border-radius: .8rem; background: rgba(15, 23, 42, .58); cursor: pointer; }
-    .checks input[type="checkbox"] { flex: 0 0 auto; width: 1.2rem; height: 1.2rem; margin: 0; padding: 0; accent-color: #ec4899; }
-    .checks span { min-width: 0; line-height: 1.35; }
     .privacy-settings { display: grid; gap: .65rem; margin: 0; padding: 1rem; border: 1px solid rgba(148, 163, 184, .14); border-radius: 1rem; }
-    .privacy-settings label, .privacy-toggle { display: flex; align-items: center; gap: .65rem; }
-    .privacy-settings input, .privacy-toggle input { width: 1.2rem; height: 1.2rem; flex: 0 0 auto; }
+    .privacy-settings label { display: flex; align-items: center; gap: .65rem; }
+    .privacy-settings input { width: 1.2rem; height: 1.2rem; flex: 0 0 auto; }
     .field-help { color: #94a3b8; font-size: .85rem; font-weight: 400; }
     .compact-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
     .compact-actions button, .compact-button { width: auto; min-height: 2.5rem; padding: .65rem .85rem; }
@@ -377,17 +249,6 @@ import { SessionService } from '../core/session.service';
     .muted { color: #94a3b8; }
     .meta-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
     .pill { border-radius: 999px; background: rgba(148, 163, 184, .12); border: 1px solid rgba(148, 163, 184, .14); color: #e2e8f0; padding: .3rem .7rem; font-size: .92rem; font-weight: 700; }
-    .gallery-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
-    .gallery-grid { display: grid; gap: 1rem; margin-top: 1rem; }
-    .gallery-card { display: grid; gap: .9rem; padding-top: 1rem; border-top: 1px solid rgba(148, 163, 184, .14); }
-    .gallery-card:first-child { border-top: 0; padding-top: 0; }
-    .gallery-card-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
-    .upload-label { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .8rem 1rem; border-radius: 999px; border: 1px solid rgba(148, 163, 184, .24); background: #0f172a; color: #f8fafc; cursor: pointer; font-weight: 700; }
-    .upload-label input { display: none; }
-    .asset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .75rem; }
-    .asset-item { margin: 0; display: grid; gap: .65rem; }
-    .asset-item img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: .9rem; border: 1px solid rgba(148, 163, 184, .16); background: #020617; }
-    .gate { display: grid; gap: .75rem; padding: 1rem; border: 1px dashed rgba(148, 163, 184, .22); border-radius: 1rem; background: rgba(15, 23, 42, .45); }
     .activity-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
     .activity-head p { margin: .2rem 0 0; }
     .activity-count { margin-bottom: .9rem; color: #cbd5e1; }
@@ -401,10 +262,10 @@ import { SessionService } from '../core/session.service';
       .layout { grid-template-columns: 1fr; }
     }
     @media (max-width: 720px) {
-      .title-row, .gallery-card-head, .activity-item { display: grid; }
-      .duo, .checks { grid-template-columns: 1fr; }
+      .title-row, .activity-item { display: grid; }
+      .duo { grid-template-columns: 1fr; }
       .public-profile-link { justify-self: start; }
-      .request-item, .compact-actions { display: grid; justify-content: stretch; }
+      .compact-actions { display: grid; justify-content: stretch; }
       .compact-actions button, .compact-button { width: 100%; }
     }
   `]
@@ -414,19 +275,13 @@ export class ProfilePageComponent implements OnInit {
   protected readonly session = inject(SessionService);
 
   protected readonly profile = signal<Profile | null>(null);
-  protected readonly gallery = signal<Post[]>([]);
   protected readonly activity = signal<ProfileVisitSummary | null>(null);
   protected readonly myReports = signal<ReportItem[]>([]);
-  protected readonly accessRequests = signal<PostAccessRequest[]>([]);
   protected readonly blockedProfiles = signal<Profile[]>([]);
   protected readonly sessions = signal<AccountSession[]>([]);
   protected readonly isSavingProfile = signal(false);
-  protected readonly isSavingPost = signal(false);
   protected readonly isLoadingActivity = signal(false);
-  protected readonly isLoadingGallery = signal(false);
   protected readonly isLoadingReports = signal(false);
-  protected readonly isLoadingAccessRequests = signal(false);
-  protected readonly uploadingPostId = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly activityError = signal<string | null>(null);
   protected readonly success = signal<string | null>(null);
@@ -442,14 +297,6 @@ export class ProfilePageComponent implements OnInit {
   protected showLocation = true;
   protected registerProfileViews = true;
 
-  protected postTitle = '';
-  protected postDescription = '';
-  protected postPrivate = false;
-  protected ruleAge = true;
-  protected ruleRights = true;
-  protected ruleSafe = true;
-  protected rulePermission = true;
-
   public ngOnInit(): void {
     if (!this.session.isLoggedIn()) {
       return;
@@ -458,7 +305,6 @@ export class ProfilePageComponent implements OnInit {
     this.api.getMyProfile().subscribe({
       next: profile => {
         this.applyProfile(profile);
-        this.loadGallery(profile.user_id);
       },
       error: () => {
         const user = this.session.user();
@@ -468,17 +314,8 @@ export class ProfilePageComponent implements OnInit {
 
     this.loadActivity();
     this.loadReports();
-    this.loadAccessRequests();
     this.api.getBlockedProfiles().subscribe({ next: items => this.blockedProfiles.set(items), error: () => this.blockedProfiles.set([]) });
     this.api.getSessions().subscribe({ next: items => this.sessions.set(items), error: () => this.sessions.set([]) });
-  }
-
-  protected canCreatePost(): boolean {
-    return !!this.postTitle.trim() && this.ruleAge && this.ruleRights && this.ruleSafe && this.rulePermission;
-  }
-
-  protected isUploadingFor(postId: string): boolean {
-    return this.uploadingPostId() === postId;
   }
 
   protected saveProfile(): void {
@@ -507,68 +344,6 @@ export class ProfilePageComponent implements OnInit {
         this.error.set('Opslaan is niet gelukt. Controleer je invoer en probeer opnieuw.');
         this.isSavingProfile.set(false);
       }
-    });
-  }
-
-  protected createPost(): void {
-    this.isSavingPost.set(true);
-    this.error.set(null);
-    this.success.set(null);
-
-    this.api.createPost({
-      title: this.postTitle.trim(),
-      description: this.postDescription.trim() || null,
-      is_private: this.postPrivate,
-      rule_age: this.ruleAge,
-      rule_rights: this.ruleRights,
-      rule_safe: this.ruleSafe,
-      rule_permission: this.rulePermission
-    }).subscribe({
-      next: post => {
-        this.gallery.set([post, ...this.gallery()]);
-        this.postTitle = '';
-        this.postDescription = '';
-        this.postPrivate = false;
-        this.success.set('Fotoalbum aangemaakt. Voeg nu je eerste foto toe.');
-        this.isSavingPost.set(false);
-      },
-      error: () => {
-        this.error.set('Fotoalbum aanmaken is niet gelukt. Controleer of alle regels zijn aangevinkt.');
-        this.isSavingPost.set(false);
-      }
-    });
-  }
-
-  protected uploadFile(postId: string, event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    this.uploadingPostId.set(postId);
-    this.error.set(null);
-    this.success.set(null);
-
-    this.api.uploadPostAsset(postId, file).subscribe({
-      next: ({ post }) => {
-        this.gallery.set(this.gallery().map(item => item.id === post.id ? post : item));
-        this.success.set('Foto toegevoegd.');
-        this.uploadingPostId.set(null);
-        input.value = '';
-      },
-      error: () => {
-        this.error.set('Uploaden is niet gelukt. Gebruik JPG, PNG, WebP of GIF tot 10 MB.');
-        this.uploadingPostId.set(null);
-        input.value = '';
-      }
-    });
-  }
-
-  protected togglePhoto(post: Post, assetId: string): void {
-    this.api.toggleAssetVisibility(assetId).subscribe({
-      next: updated => this.gallery.update(items => items.map(item => item.id === post.id ? updated : item)),
-      error: () => this.error.set('Fotozichtbaarheid aanpassen is niet gelukt.')
     });
   }
 
@@ -602,27 +377,6 @@ export class ProfilePageComponent implements OnInit {
     });
   }
 
-  private loadAccessRequests(): void {
-    this.isLoadingAccessRequests.set(true);
-    this.api.getIncomingPostAccessRequests().subscribe({
-      next: items => {
-        this.accessRequests.set(items);
-        this.isLoadingAccessRequests.set(false);
-      },
-      error: () => {
-        this.accessRequests.set([]);
-        this.isLoadingAccessRequests.set(false);
-      }
-    });
-  }
-
-  protected decideAccess(request: PostAccessRequest, decision: 'approve' | 'deny'): void {
-    this.api.decidePostAccess(request.id, decision).subscribe({
-      next: updated => this.accessRequests.update(items => items.map(item => item.id === updated.id ? updated : item)),
-      error: () => this.error.set('Het fotoverzoek kon niet worden bijgewerkt.')
-    });
-  }
-
   protected unblock(profile: Profile): void {
     this.api.unblockUser(profile.user_id).subscribe({
       next: () => this.blockedProfiles.update(items => items.filter(item => item.user_id !== profile.user_id)),
@@ -641,20 +395,6 @@ export class ProfilePageComponent implements OnInit {
         this.sessions.update(items => items.filter(item => item.id !== accountSession.id));
       },
       error: () => this.error.set('Sessie intrekken is niet gelukt.')
-    });
-  }
-
-  private loadGallery(userId: string): void {
-    this.isLoadingGallery.set(true);
-    this.api.getPosts({ userId }).subscribe({
-      next: posts => {
-        this.gallery.set(posts);
-        this.isLoadingGallery.set(false);
-      },
-      error: () => {
-        this.gallery.set([]);
-        this.isLoadingGallery.set(false);
-      }
     });
   }
 
