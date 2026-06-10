@@ -19,9 +19,6 @@ import { SessionService } from '../core/session.service';
         </div>
         <div class="hero-actions">
           <a routerLink="/profile" class="secondary-link">Mijn profiel aanpassen</a>
-          <button type="button" class="secondary" (click)="load()" [disabled]="isLoading()">
-            {{ isLoading() ? 'Laden...' : 'Verversen' }}
-          </button>
         </div>
       </div>
 

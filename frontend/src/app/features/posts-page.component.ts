@@ -15,7 +15,6 @@ import { SessionService } from '../core/session.service';
           <h1>Media-items beheren</h1>
           <p>Maak een kaartje aan en upload daarna echte beelden in plaats van demo-assets.</p>
         </div>
-        <button type="button" class="secondary" (click)="load()" [disabled]="isLoading()">Verversen</button>
       </div>
 
       @if (!session.isLoggedIn()) {
