@@ -52,7 +52,7 @@ import { SessionService } from './core/session.service';
     .badge { display: inline-flex; min-width: 1.25rem; height: 1.25rem; align-items: center; justify-content: center; padding: 0 .35rem; border-radius: 999px; background: #ec4899; color: white; font-size: .75rem; font-weight: 800; line-height: 1; box-shadow: 0 0 0 1px rgba(255,255,255,.08); }
     .nav-logout { min-height: 2.75rem; }
     .shell-main { max-width: 1180px; margin: 0 auto; padding: 1.5rem max(1rem, env(safe-area-inset-right)) calc(2rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); }
-    @media (max-width: 760px) {
+    @media (max-width: 820px) {
       .shell-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
       .menu-toggle { display: inline-flex; align-items: center; justify-content: center; }
       .shell-nav { grid-column: 1 / -1; display: none; justify-content: flex-start; padding-top: .35rem; }

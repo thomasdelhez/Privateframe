@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -11,7 +11,7 @@ import { SessionService } from '../core/session.service';
   standalone: true,
   imports: [FormsModule, RouterLink],
   template: `
-    <section class="card flow">
+    <section class="card flow" [class.conversation-open]="selectedConversation()">
       <div class="hero">
         <div>
           <p class="eyebrow">Berichten</p>
@@ -83,11 +83,17 @@ import { SessionService } from '../core/session.service';
             </div>
           } @else if (selectedConversation(); as conversation) {
             <div class="thread-head">
-              <div>
-                <h2>{{ participantName(conversation) }}</h2>
-                <p class="muted">
-                  {{ participantHandle(conversation) }} · {{ statusLabel(conversation.status) }}
-                </p>
+              <div class="thread-identity">
+                <button type="button" class="mobile-back secondary" (click)="selectConversation(null)" aria-label="Terug naar gesprekken">
+                  <span aria-hidden="true">←</span>
+                  <span>Gesprekken</span>
+                </button>
+                <div>
+                  <h2>{{ participantName(conversation) }}</h2>
+                  <p class="muted">
+                    {{ participantHandle(conversation) }} · {{ statusLabel(conversation.status) }}
+                  </p>
+                </div>
               </div>
               <div class="thread-actions">
                 @if (conversation.status === 'active') {
@@ -136,7 +142,7 @@ import { SessionService } from '../core/session.service';
               @if (isLoadingMessages()) {
                 <p>Berichten laden...</p>
               } @else {
-                <div class="messages">
+                <div class="messages" #messagesViewport>
                   @if (messages().length === 0) {
                     <p class="muted">Nog geen berichten in dit gesprek.</p>
                   } @else {
@@ -160,7 +166,7 @@ import { SessionService } from '../core/session.service';
                 id="chat-message"
                 name="messageBody"
                 [(ngModel)]="messageBody"
-                rows="3"
+                rows="1"
                 maxlength="2000"
                 placeholder="Typ je bericht..."
                 (keydown)="onComposerKeydown($event)"
@@ -235,28 +241,42 @@ import { SessionService } from '../core/session.service';
     .pill { border-radius: 999px; background: rgba(148, 163, 184, .12); border: 1px solid rgba(148, 163, 184, .14); color: #e2e8f0; padding: .28rem .65rem; font-size: .82rem; font-weight: 700; }
     .pill.warn { color: #fcd34d; border-color: rgba(251, 191, 36, .25); }
     .pill.good { color: #86efac; border-color: rgba(34, 197, 94, .22); }
-    .thread { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 1rem; min-height: 0; max-height: min(78vh, 920px); }
-    .thread-body { min-height: 0; overflow: hidden; }
-    .messages { display: grid; gap: .75rem; min-height: 0; height: 100%; overflow-y: auto; padding-right: .2rem; }
+    .thread { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "header" "report" "messages" "composer"; gap: 1rem; min-height: 0; height: min(78vh, 920px); max-height: 920px; overflow: hidden; }
+    .thread-head { grid-area: header; }
+    .thread-identity { display: flex; align-items: center; gap: .75rem; min-width: 0; }
+    .thread-identity h2, .thread-identity p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mobile-back { display: none; }
+    .thread-body { grid-area: messages; min-height: 0; overflow: hidden; }
+    .messages { display: grid; align-content: start; gap: .75rem; min-height: 0; height: 100%; overflow-y: auto; padding-right: .2rem; overscroll-behavior-y: contain; scrollbar-gutter: stable; -webkit-overflow-scrolling: touch; }
     .message { display: grid; gap: .45rem; max-width: 80%; padding: .85rem 1rem; border-radius: 1rem; border: 1px solid rgba(148, 163, 184, .14); background: rgba(15, 23, 42, .92); }
     .message.own { margin-left: auto; background: linear-gradient(135deg, rgba(91, 33, 182, .28), rgba(15, 23, 42, .96)); border-color: rgba(192, 132, 252, .28); }
     .message-meta { display: flex; justify-content: space-between; gap: .75rem; color: #cbd5e1; font-size: .9rem; }
     .message p, .report-item p { margin: 0; }
     .composer, .report-box { display: grid; gap: .75rem; }
-    .composer { margin-top: auto; padding-top: .85rem; border-top: 1px solid rgba(148, 163, 184, .14); background: rgba(2, 6, 23, .96); }
+    .composer { grid-area: composer; grid-template-columns: minmax(0, 1fr) auto; align-items: end; margin-top: auto; padding-top: .85rem; border-top: 1px solid rgba(148, 163, 184, .14); background: rgba(2, 6, 23, .96); }
+    .composer textarea { min-height: 3.2rem; max-height: 7.5rem; resize: none; }
+    .composer button { width: auto; min-height: 3.2rem; }
     .mobile-send-label { display: none; }
     textarea, select { width: 100%; border: 1px solid rgba(148, 163, 184, .2); border-radius: .85rem; background: rgba(15, 23, 42, .95); color: #f8fafc; padding: .85rem .95rem; }
     .thread-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
-    .report-box { margin: 1rem 0; padding: 1rem; border-radius: 1rem; border: 1px solid rgba(148, 163, 184, .14); background: rgba(15, 23, 42, .7); }
+    .report-box { grid-area: report; margin: 0; padding: 1rem; border-radius: 1rem; border: 1px solid rgba(148, 163, 184, .14); background: rgba(15, 23, 42, .7); }
     .report-item { display: grid; gap: .35rem; padding-top: .75rem; border-top: 1px solid rgba(148, 163, 184, .14); }
     .report-item:first-child { padding-top: 0; border-top: 0; }
     .modal-backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: 1.5rem; background: rgba(2, 6, 23, .78); backdrop-filter: blur(8px); z-index: 120; }
     .modal { width: min(720px, 100%); max-height: min(80vh, 900px); overflow: auto; }
     .empty { border: 1px dashed rgba(148, 163, 184, .22); border-radius: 1rem; padding: 1rem; background: rgba(15, 23, 42, .45); }
-    .thread-empty { min-height: 420px; place-content: center; }
+    .thread-empty { grid-area: 1 / 1 / -1 / -1; min-height: 420px; place-content: center; }
     .error { color: #fecaca; background: rgba(127, 29, 29, .45); padding: .75rem; border-radius: .5rem; }
     .success { color: #bbf7d0; background: rgba(20, 83, 45, .45); padding: .75rem; border-radius: .5rem; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    .conversation-open { height: calc(100dvh - 8.5rem - env(safe-area-inset-bottom)); min-height: 0; overflow: hidden; }
+    .conversation-open > .hero,
+    .conversation-open > .error,
+    .conversation-open > .success { display: none; }
+    .conversation-open .layout { height: 100%; min-height: 0; align-items: stretch; }
+    .conversation-open .sidebar { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; overflow: hidden; }
+    .conversation-open .conversation-list { min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; }
+    .conversation-open .thread { height: 100%; max-height: none; }
     @media (max-width: 1100px) {
       .layout { grid-template-columns: 280px minmax(0, 1fr); }
     }
@@ -272,28 +292,55 @@ import { SessionService } from '../core/session.service';
       .conversation-state .pill { display: none; }
       .thread-empty { min-height: auto; }
       .message { max-width: 100%; }
-      .thread { min-height: min(620px, calc(100dvh - 8rem)); max-height: none; padding: .9rem; }
-      .thread-body { overflow: visible; }
-      .messages { max-height: 52dvh; padding-right: .1rem; overscroll-behavior: contain; }
-      .composer { position: sticky; bottom: max(.25rem, env(safe-area-inset-bottom)); z-index: 3; margin-inline: -.2rem; padding: .8rem .2rem .2rem; }
-      .composer textarea { min-height: 3.2rem; max-height: 8rem; }
+      .thread { height: auto; min-height: min(620px, calc(100dvh - 8rem)); max-height: none; padding: .9rem; }
+      .messages { padding-right: .1rem; }
+      .composer { padding-bottom: env(safe-area-inset-bottom); }
       .modal-backdrop { align-items: end; padding: .6rem; }
       .modal { width: 100%; max-height: 88dvh; border-radius: 1.25rem 1.25rem .75rem .75rem; padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+
+      .conversation-open {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
+      }
+      .conversation-open .sidebar { display: none; }
+      .conversation-open .thread {
+        min-height: 0;
+        border-radius: 1rem;
+      }
+      .conversation-open .thread-head { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+      .conversation-open .thread-identity { min-width: 0; }
+      .conversation-open .mobile-back { display: inline-flex; flex: 0 0 auto; width: auto; min-height: 2.6rem; padding: .65rem .8rem; gap: .35rem; }
+      .conversation-open .thread-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: auto; }
+      .conversation-open .thread-actions button { width: auto; min-height: 2.6rem; padding: .65rem .8rem; }
+      .conversation-open .thread-body { min-height: 0; overflow: hidden; }
     }
     @media (max-width: 480px) {
       .hero-actions, .thread-actions { grid-template-columns: 1fr; }
       .thread-head { gap: .65rem; }
       .message { padding: .72rem .8rem; }
       .message-meta { display: grid; gap: .15rem; }
-      .composer { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
       .composer button { width: auto; min-height: 3.2rem; padding-inline: 1rem; }
       .desktop-send-label { display: none; }
       .mobile-send-label { display: inline; }
       .report-box { padding: .8rem; }
+      .conversation-open .thread { gap: .75rem; padding: .75rem; }
+      .conversation-open .thread-head { grid-template-columns: minmax(0, 1fr); }
+      .conversation-open .thread-identity { display: grid; grid-template-columns: auto minmax(0, 1fr); }
+      .conversation-open .mobile-back span:last-child { display: none; }
+      .conversation-open .mobile-back { min-width: 2.6rem; padding-inline: .65rem; }
+      .conversation-open .thread-actions { width: 100%; }
+    }
+    @media (max-width: 560px) {
+      .conversation-open { height: calc(100dvh - 7.75rem - env(safe-area-inset-bottom)); }
     }
   `]
 })
 export class ChatPageComponent implements OnInit, OnDestroy {
+  @ViewChild('messagesViewport') private messagesViewport?: ElementRef<HTMLDivElement>;
+
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly chatPresence = inject(ChatPresenceService);
@@ -420,6 +467,7 @@ export class ChatPageComponent implements OnInit, OnDestroy {
         this.messages.set(messages);
         this.isLoadingMessages.set(false);
         this.markSelectedConversationRead();
+        this.scheduleMessagesScroll();
       },
       error: () => {
         this.messages.set([]);
@@ -444,6 +492,7 @@ export class ChatPageComponent implements OnInit, OnDestroy {
         this.isSendingMessage.set(false);
         this.touchConversation(conversationId);
         this.chatPresence.refreshUnreadCount();
+        this.scheduleMessagesScroll();
       },
       error: () => {
         this.error.set('Versturen van je bericht is niet gelukt.');
@@ -693,11 +742,32 @@ export class ChatPageComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const shouldScroll = this.isMessagesViewportNearBottom();
     this.messages.update(items => {
       if (items.some(item => item.id === message.id)) {
         return items;
       }
       return [...items, message];
+    });
+    if (shouldScroll) {
+      this.scheduleMessagesScroll();
+    }
+  }
+
+  private isMessagesViewportNearBottom(): boolean {
+    const viewport = this.messagesViewport?.nativeElement;
+    if (!viewport) {
+      return true;
+    }
+    return viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 120;
+  }
+
+  private scheduleMessagesScroll(): void {
+    requestAnimationFrame(() => {
+      const viewport = this.messagesViewport?.nativeElement;
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
     });
   }
 }
