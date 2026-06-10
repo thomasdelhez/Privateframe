@@ -11,21 +11,19 @@ import { apiErrorMessage } from '../core/http-error';
     <section class="card form-card">
       <p class="eyebrow">Account</p>
       <h1>Wachtwoord vergeten</h1>
-      <p>Vul je e-mailadres in. Als het account bestaat, ontvang je een resetlink.</p>
+      <p class="muted">Vul je e-mailadres in. Als het account bestaat, ontvang je een resetlink.</p>
       <label>E-mail <input [(ngModel)]="email" type="email" autocomplete="email" /></label>
       <button type="button" (click)="submit()" [disabled]="isLoading()">Resetlink aanvragen</button>
       @if (message()) { <p class="success">{{ message() }}</p> }
       @if (error()) { <p class="error">{{ error() }}</p> }
-      <a routerLink="/login">Terug naar login</a>
+      <a routerLink="/login" class="inline-link">Terug naar login</a>
     </section>
   `,
   styles: [`
-    .form-card { max-width: 560px; margin: 2rem auto; display: grid; gap: 1rem; }
-    .eyebrow { color: #f472b6; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+    .form-card { max-width: 560px; margin: clamp(1rem, 4vw, 2rem) auto; display: grid; gap: 1rem; }
     label { display: grid; gap: .4rem; color: #d1d5db; }
-    .success { color: #bbf7d0; background: rgba(20, 83, 45, .45); padding: .75rem; border-radius: .5rem; }
-    .error { color: #fecaca; background: rgba(127, 29, 29, .45); padding: .75rem; border-radius: .5rem; }
-    a { color: #f9a8d4; }
+    .muted { margin: 0; color: #cbd5e1; }
+    .inline-link { color: #f9a8d4; text-decoration: none; font-weight: 700; }
   `]
 })
 export class ForgotPasswordPageComponent {

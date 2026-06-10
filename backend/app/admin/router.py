@@ -54,6 +54,34 @@ def _serialize_admin_post(post: MediaPost, session: SessionDep, admin: User) -> 
     }
 
 
+def _serialize_audit_entity(log: AuditLog, session: SessionDep) -> tuple[str | None, str | None]:
+    if log.entity_type == "user":
+        try:
+            user = session.get(User, UUID(log.entity_id))
+        except ValueError:
+            user = None
+        if user:
+            profile = _profile_for_user(user.id, session)
+            label = profile.display_name or user.email
+            route = f"/discover/{profile.slug}" if profile else None
+            return label, route
+        return None, None
+
+    if log.entity_type == "post":
+        try:
+            post = session.get(MediaPost, UUID(log.entity_id))
+        except ValueError:
+            post = None
+        if post:
+            profile = _profile_for_user(post.user_id, session)
+            label = post.title
+            route = f"/discover/{profile.slug}" if profile else None
+            return label, route
+        return None, None
+
+    return None, None
+
+
 @router.get("/users")
 def list_users(_: AdminUserDep, session: SessionDep) -> list[dict]:
     users = session.exec(select(User).order_by(desc(User.created_at)).limit(100)).all()
@@ -128,18 +156,25 @@ def remove_post(post_id: UUID, admin: AdminUserDep, session: SessionDep) -> dict
 @router.get("/audit")
 def list_audit(_: AdminUserDep, session: SessionDep) -> list[dict]:
     logs = session.exec(select(AuditLog).order_by(desc(AuditLog.created_at)).limit(100)).all()
-    return [
-        {
-            "id": log.id,
-            "actor_user_id": log.actor_user_id,
-            "action": log.action,
-            "entity_type": log.entity_type,
-            "entity_id": log.entity_id,
-            "reason": log.reason,
-            "created_at": log.created_at,
-        }
-        for log in logs
-    ]
+    payload: list[dict] = []
+    for log in logs:
+        actor = session.get(User, log.actor_user_id)
+        entity_label, entity_route = _serialize_audit_entity(log, session)
+        payload.append(
+            {
+                "id": log.id,
+                "actor_user_id": log.actor_user_id,
+                "action": log.action,
+                "entity_type": log.entity_type,
+                "entity_id": log.entity_id,
+                "reason": log.reason,
+                "created_at": log.created_at,
+                "actor": _serialize_user(actor, session) if actor else None,
+                "entity_label": entity_label,
+                "entity_route": entity_route,
+            }
+        )
+    return payload
 
 
 @router.get("/reports/{report_id}/context")

@@ -13,7 +13,7 @@ import { CurrentUser, SessionService } from '../core/session.service';
       <div>
         <p class="eyebrow">Account</p>
         <h1>Inloggen of registreren</h1>
-        <p>Gebruik minimaal 10 tekens voor een nieuw wachtwoord.</p>
+        <p class="muted">Gebruik minimaal 10 tekens voor een nieuw wachtwoord.</p>
       </div>
 
       <label>E-mail <input [(ngModel)]="email" type="email" autocomplete="email" /></label>
@@ -21,20 +21,18 @@ import { CurrentUser, SessionService } from '../core/session.service';
 
       @if (error()) { <p class="error">{{ error() }}</p> }
 
-      <div class="actions">
+      <div class="actions-row">
         <button type="button" (click)="login()" [disabled]="isLoading()">Login</button>
         <button class="secondary" type="button" (click)="register()" [disabled]="isLoading()">Registreer</button>
       </div>
-      <a routerLink="/forgot-password">Wachtwoord vergeten?</a>
+      <a routerLink="/forgot-password" class="inline-link">Wachtwoord vergeten?</a>
     </section>
   `,
   styles: [`
-    .form-card { max-width: 520px; margin: 3rem auto; display: grid; gap: 1rem; }
-    .eyebrow { color: #f472b6; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+    .form-card { max-width: 520px; margin: clamp(1rem, 4vw, 3rem) auto; display: grid; gap: 1rem; }
     label { display: grid; gap: .4rem; color: #d1d5db; }
-    .actions { display: flex; gap: .75rem; flex-wrap: wrap; }
-    .error { color: #fecaca; background: rgba(127, 29, 29, .45); padding: .75rem; border-radius: .5rem; }
-    a { color: #f9a8d4; }
+    .muted { margin: 0; color: #cbd5e1; }
+    .inline-link { color: #f9a8d4; text-decoration: none; font-weight: 700; }
   `]
 })
 export class LoginPageComponent {

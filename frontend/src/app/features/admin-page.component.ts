@@ -81,7 +81,7 @@ import { ApiService, AdminPost, AdminReportContext, AdminUser, AuditLogEntry, Ch
                   <div class="row">
                     <div>
                       <strong>{{ report.target_type }} · {{ report.reason.replaceAll('_', ' ') }}</strong>
-                      <p class="muted">Klik om context te zien voor target {{ report.target_id }}</p>
+                      <p class="muted">Klik om context, betrokken profiel of gesprek te bekijken.</p>
                     </div>
                     <span class="pill" [class.good]="report.status === 'resolved'">{{ report.status }}</span>
                   </div>
@@ -198,8 +198,25 @@ import { ApiService, AdminPost, AdminReportContext, AdminUser, AuditLogEntry, Ch
                     <strong>{{ entry.action }}</strong>
                     <span class="pill">{{ entry.entity_type }}</span>
                   </div>
-                  <p class="muted">Entity: {{ entry.entity_id }}</p>
-                  <p class="muted">Actor: {{ entry.actor_user_id }}</p>
+                  <p class="muted">
+                    Object:
+                    @if (entry.entity_label) {
+                      {{ entry.entity_label }}
+                    } @else {
+                      {{ entry.entity_type }}
+                    }
+                  </p>
+                  <p class="muted">
+                    Actor:
+                    @if (entry.actor) {
+                      {{ entry.actor.display_name || entry.actor.email }}
+                    } @else {
+                      Systeem of onbekend account
+                    }
+                  </p>
+                  @if (entry.entity_route) {
+                    <a class="secondary action-link" [routerLink]="entry.entity_route">Open gerelateerd profiel</a>
+                  }
                   <span class="muted">{{ formatDate(entry.created_at) }}</span>
                 </article>
               }
@@ -389,6 +406,7 @@ import { ApiService, AdminPost, AdminReportContext, AdminUser, AuditLogEntry, Ch
     }
     @media (max-width: 720px) {
       .hero, .panel-head, .row, .actions { display: grid; }
+      .modal-backdrop { padding: .75rem; }
     }
   `]
 })

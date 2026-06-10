@@ -10,7 +10,7 @@ import { SessionService } from '../core/session.service';
     <section class="card flow">
       <p class="eyebrow">Accountplan</p>
       <h1>Plan beheren</h1>
-      <p>
+      <p class="muted">
         In deze MVP schakelt deze knop de uitgebreide accountmodus direct aan of uit. Later kan dit worden gekoppeld
         aan een echte provider en abonnementsstatussen.
       </p>
@@ -36,15 +36,15 @@ import { SessionService } from '../core/session.service';
         }
       } @else {
         <p>Log eerst in om je plan te beheren.</p>
-        <a routerLink="/login">Naar login</a>
+        <a routerLink="/login" class="inline-link">Naar login</a>
       }
     </section>
   `,
   styles: [`
     .flow { display: grid; gap: 1rem; max-width: 720px; }
-    .eyebrow { color: #f472b6; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
     .status { background: rgba(255,255,255,.06); padding: 1rem; border-radius: .75rem; }
-    .error { color: #fecaca; background: rgba(127, 29, 29, .45); padding: .75rem; border-radius: .5rem; }
+    .muted { margin: 0; color: #cbd5e1; }
+    .inline-link { color: #f9a8d4; text-decoration: none; font-weight: 700; }
   `]
 })
 export class PlanPageComponent {

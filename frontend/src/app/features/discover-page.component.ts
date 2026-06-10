@@ -19,7 +19,9 @@ import { SessionService } from '../core/session.service';
         </div>
         <div class="hero-actions">
           <a routerLink="/profile" class="secondary-link">Mijn profiel aanpassen</a>
-          <button type="button" class="secondary" (click)="load()" [disabled]="isLoading()">Verversen</button>
+          <button type="button" class="secondary" (click)="load()" [disabled]="isLoading()">
+            {{ isLoading() ? 'Laden...' : 'Verversen' }}
+          </button>
         </div>
       </div>
 
@@ -137,7 +139,7 @@ import { SessionService } from '../core/session.service';
     .empty { border: 1px dashed rgba(148, 163, 184, .22); border-radius: 1rem; padding: 1.25rem; background: rgba(15, 23, 42, .6); }
     .error { color: #fecaca; background: rgba(127, 29, 29, .45); padding: .85rem; border-radius: .75rem; }
     @media (max-width: 760px) {
-      .hero { display: grid; }
+      .hero, .tile-footer { display: grid; }
       .filters { grid-template-columns: 1fr; }
     }
   `]

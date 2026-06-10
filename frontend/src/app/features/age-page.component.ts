@@ -9,7 +9,7 @@ import { SessionService } from '../core/session.service';
     <section class="card flow">
       <p class="eyebrow">Onboarding</p>
       <h1>Bevestig je toegang</h1>
-      <p>
+      <p class="muted">
         Voor de MVP gebruiken we een eenvoudige bevestiging. Later kan deze stap gekoppeld worden aan uitgebreidere
         verificatie, logging en voorwaarden.
       </p>
@@ -25,8 +25,7 @@ import { SessionService } from '../core/session.service';
   `,
   styles: [`
     .flow { display: grid; gap: 1rem; max-width: 720px; }
-    .eyebrow { color: #f472b6; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
-    .error { color: #fecaca; background: rgba(127, 29, 29, .45); padding: .75rem; border-radius: .5rem; }
+    .muted { margin: 0; color: #cbd5e1; }
   `]
 })
 export class AgePageComponent {

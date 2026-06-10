@@ -332,6 +332,9 @@ export interface AuditLogEntry {
   entity_id: string;
   reason: string | null;
   created_at: string;
+  actor?: AdminUser | null;
+  entity_label?: string | null;
+  entity_route?: string | null;
 }
 
 export interface AdminReportContext {

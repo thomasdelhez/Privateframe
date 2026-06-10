@@ -18,10 +18,10 @@ import { SessionService } from '../core/session.service';
       } @else if (verified()) {
         <p class="success">Je e-mailadres is bevestigd.</p>
         @if (!session.isLoggedIn()) {
-          <a routerLink="/login">Nu inloggen</a>
+          <a routerLink="/login" class="inline-link">Nu inloggen</a>
         }
       } @else {
-        <p>Open de link in de verificatiemail. Lokaal vind je die in Mailpit op poort 8025.</p>
+        <p class="muted">Open de link in de verificatiemail. Lokaal vind je die in Mailpit op poort 8025.</p>
         <label>
           E-mail
           <input [(ngModel)]="email" type="email" autocomplete="email" />
@@ -36,12 +36,10 @@ import { SessionService } from '../core/session.service';
     </section>
   `,
   styles: [`
-    .form-card { max-width: 620px; margin: 2rem auto; display: grid; gap: 1rem; }
-    .eyebrow { color: #f472b6; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+    .form-card { max-width: 620px; margin: clamp(1rem, 4vw, 2rem) auto; display: grid; gap: 1rem; }
     label { display: grid; gap: .4rem; color: #d1d5db; }
-    .success { color: #bbf7d0; background: rgba(20, 83, 45, .45); padding: .75rem; border-radius: .5rem; }
-    .error { color: #fecaca; background: rgba(127, 29, 29, .45); padding: .75rem; border-radius: .5rem; }
-    a { color: #f9a8d4; }
+    .muted { margin: 0; color: #cbd5e1; }
+    .inline-link { color: #f9a8d4; text-decoration: none; font-weight: 700; }
   `]
 })
 export class VerifyEmailPageComponent implements OnInit {
