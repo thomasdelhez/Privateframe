@@ -16,7 +16,7 @@ import { SessionService } from '../core/session.service';
           <p>Bouw je zichtbare profiel uit, beheer je gallery en volg wie je profiel recent heeft bekeken.</p>
         </div>
         @if (profile(); as item) {
-          <a [routerLink]="['/discover', item.slug]" class="secondary-link">Bekijk publiek profiel</a>
+          <a [routerLink]="['/discover', item.slug]" class="secondary-link public-profile-link">Bekijk publiek profiel</a>
         }
       </div>
 
@@ -183,9 +183,6 @@ import { SessionService } from '../core/session.service';
                   <h2>Profielbezoekers</h2>
                   <p class="muted">Premium toont ook wie je bekeken heeft.</p>
                 </div>
-                <button type="button" class="secondary" (click)="loadActivity()" [disabled]="isLoadingActivity()">
-                  Vernieuwen
-                </button>
               </div>
 
               @if (activityError()) {
@@ -223,9 +220,6 @@ import { SessionService } from '../core/session.service';
                   <h2>Mijn meldingen</h2>
                   <p class="muted">Een overzicht van reports die je zelf hebt gedaan.</p>
                 </div>
-                <button type="button" class="secondary" (click)="loadReports()" [disabled]="isLoadingReports()">
-                  Vernieuwen
-                </button>
               </div>
 
               @if (isLoadingReports()) {
@@ -260,6 +254,7 @@ import { SessionService } from '../core/session.service';
     .title-row { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
     .secondary-link { display: inline-flex; align-items: center; padding: .78rem 1rem; border-radius: 999px; border: 1px solid rgba(148, 163, 184, .2); background: rgba(15, 23, 42, .85); color: #e2e8f0; text-decoration: none; font-weight: 700; }
     .secondary-link:hover { border-color: rgba(251, 191, 36, .45); color: #f8fafc; }
+    .public-profile-link { flex: 0 0 auto; width: auto; white-space: nowrap; }
     .eyebrow { color: #f59e0b; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
     .layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, .85fr); gap: 1rem; align-items: start; }
     .main-column, .side-column { display: grid; gap: 1rem; }
@@ -306,6 +301,7 @@ import { SessionService } from '../core/session.service';
     @media (max-width: 720px) {
       .title-row, .gallery-card-head, .activity-item { display: grid; }
       .duo, .checks { grid-template-columns: 1fr; }
+      .public-profile-link { justify-self: start; }
     }
   `]
 })
