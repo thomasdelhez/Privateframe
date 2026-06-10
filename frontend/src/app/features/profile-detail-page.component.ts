@@ -2,12 +2,14 @@ import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService, Post, Profile, ReportReason } from '../core/api.service';
+import { AuthenticatedImageDirective } from '../core/authenticated-image.directive';
 import { SessionService } from '../core/session.service';
 
 interface GalleryItem {
   postId: string;
   assetId: string;
-  imageUrl: string;
+  url: string | null;
+  previewUrl: string | null;
   locked: boolean;
   title: string;
   description: string | null;
@@ -17,7 +19,7 @@ interface GalleryItem {
 
 @Component({
   standalone: true,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, AuthenticatedImageDirective],
   template: `
     <section class="card flow">
       <a routerLink="/discover" class="back-link">Terug naar ontdekken</a>
@@ -216,7 +218,11 @@ interface GalleryItem {
             <div class="gallery-grid">
               @for (item of galleryItems(); track item.assetId; let index = $index) {
                 <button type="button" class="gallery-item" (click)="openLightbox(index)">
-                  <img [src]="item.imageUrl" alt="Foto van {{ profile()?.display_name }}" />
+                  <img
+                    [appAuthenticatedSrc]="item.url"
+                    [previewSrc]="item.previewUrl"
+                    alt="Foto van {{ profile()?.display_name }}"
+                  />
                   <span class="gallery-badge">{{ item.locked ? 'preview' : 'volledig' }}</span>
                   <span class="gallery-title">{{ item.title }}</span>
                 </button>
@@ -242,7 +248,11 @@ interface GalleryItem {
             </button>
 
             <figure class="lightbox-figure">
-              <img [src]="item.imageUrl" alt="Foto van {{ profile()?.display_name }}" />
+              <img
+                [appAuthenticatedSrc]="item.url"
+                [previewSrc]="item.previewUrl"
+                alt="Foto van {{ profile()?.display_name }}"
+              />
               <figcaption>
                 <div class="caption-row">
                   <strong>{{ item.title }}</strong>
@@ -400,7 +410,8 @@ export class ProfileDetailPageComponent implements OnInit {
             post.assets.map(asset => ({
               postId: post.id,
               assetId: asset.id,
-              imageUrl: asset.preview_url || asset.url || '',
+              url: asset.url || null,
+              previewUrl: asset.preview_url || null,
               locked: asset.locked,
               title: post.title,
               description: post.description,

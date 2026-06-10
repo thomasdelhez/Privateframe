@@ -1,10 +1,11 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiService, AdminPost, AdminReportContext, AdminUser, AuditLogEntry, ChatMessage, ReportItem } from '../core/api.service';
+import { AuthenticatedImageDirective } from '../core/authenticated-image.directive';
 
 @Component({
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, AuthenticatedImageDirective],
   template: `
     <section class="card flow">
       <div class="hero">
@@ -277,7 +278,11 @@ import { ApiService, AdminPost, AdminReportContext, AdminUser, AuditLogEntry, Ch
               @if (post.assets?.length) {
                 <div class="asset-grid">
                   @for (asset of post.assets; track asset.id) {
-                    <img [src]="asset.preview_url || asset.url || ''" alt="Post preview" />
+                    <img
+                      [appAuthenticatedSrc]="asset.url"
+                      [previewSrc]="asset.preview_url"
+                      alt="Post preview"
+                    />
                   }
                 </div>
               }
@@ -365,7 +370,11 @@ import { ApiService, AdminPost, AdminReportContext, AdminUser, AuditLogEntry, Ch
           @if (post.assets?.length) {
             <div class="asset-grid">
               @for (asset of post.assets; track asset.id) {
-                <img [src]="asset.preview_url || asset.url || ''" alt="Post asset" />
+                <img
+                  [appAuthenticatedSrc]="asset.url"
+                  [previewSrc]="asset.preview_url"
+                  alt="Post asset"
+                />
               }
             </div>
           } @else {

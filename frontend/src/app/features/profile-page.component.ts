@@ -10,11 +10,12 @@ import {
   ProfileVisitSummary,
   ReportItem
 } from '../core/api.service';
+import { AuthenticatedImageDirective } from '../core/authenticated-image.directive';
 import { SessionService } from '../core/session.service';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, AuthenticatedImageDirective],
   template: `
     <section class="card flow">
       <div class="title-row">
@@ -160,7 +161,11 @@ import { SessionService } from '../core/session.service';
                           <div class="asset-grid">
                             @for (asset of post.assets; track asset.id) {
                               <figure class="asset-item">
-                                <img [src]="asset.preview_url || asset.url || ''" alt="Geuploade foto" />
+                                <img
+                                  [appAuthenticatedSrc]="asset.url"
+                                  [previewSrc]="asset.preview_url"
+                                  alt="Geuploade foto"
+                                />
                                 <figcaption>
                                   <span class="pill">{{ asset.locked ? 'preview' : 'volledig zichtbaar' }}</span>
                                   <button type="button" class="secondary compact-button" (click)="togglePhoto(post, asset.id)">

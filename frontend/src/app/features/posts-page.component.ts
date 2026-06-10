@@ -2,11 +2,12 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService, Post } from '../core/api.service';
+import { AuthenticatedImageDirective } from '../core/authenticated-image.directive';
 import { SessionService } from '../core/session.service';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, AuthenticatedImageDirective],
   template: `
     <section class="card flow">
       <div class="title-row">
@@ -84,8 +85,12 @@ import { SessionService } from '../core/session.service';
                   <div class="assets">
                     @for (asset of item.assets; track asset.id) {
                       <figure class="asset-card">
-                        @if (asset.preview_url) {
-                          <img [src]="asset.preview_url" alt="Preview van upload" />
+                        @if (asset.url || asset.preview_url) {
+                          <img
+                            [appAuthenticatedSrc]="asset.url"
+                            [previewSrc]="asset.preview_url"
+                            alt="Foto van upload"
+                          />
                         }
                         <figcaption>
                           <span class="pill">{{ asset.locked ? 'preview' : 'volledig zichtbaar' }}</span>
