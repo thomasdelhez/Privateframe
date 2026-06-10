@@ -123,6 +123,12 @@ def toggle_asset_visibility(asset_id: UUID, user: AgeConfirmedUserDep, session: 
     post = get_owned_post(asset.post_id, user, session)
     asset.is_hidden = not asset.is_hidden
     session.add(asset)
+    if asset.is_hidden:
+        profile = session.exec(select(Profile).where(Profile.user_id == user.id)).first()
+        if profile and profile.avatar_media_id == asset.id:
+            profile.avatar_media_id = None
+            profile.updated_at = datetime.now(UTC)
+            session.add(profile)
     session.commit()
     return to_post_response(post, user, session)
 

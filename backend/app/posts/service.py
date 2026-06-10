@@ -302,7 +302,7 @@ def _is_decodable_image(content: bytes) -> bool:
         with Image.open(io.BytesIO(content)) as image:
             image.verify()
         return True
-    except (UnidentifiedImageError, OSError):
+    except (UnidentifiedImageError, OSError, SyntaxError):
         return False
 
 

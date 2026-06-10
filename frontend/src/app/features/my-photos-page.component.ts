@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ApiService, Post, PostAccessRequest } from '../core/api.service';
+import { ApiService, Post, PostAccessRequest, Profile } from '../core/api.service';
 import { AuthenticatedImageDirective } from '../core/authenticated-image.directive';
 import { SessionService } from '../core/session.service';
 
@@ -208,8 +208,18 @@ interface AlbumDraft {
                               [previewSrc]="asset.preview_url"
                               alt="Foto in {{ album.title }}"
                             />
+                            @if (profile()?.avatar_media_id === asset.id) {
+                              <span class="avatar-badge">Profielfoto</span>
+                            }
                             <figcaption>
-                              <span>{{ asset.hidden ? 'Verborgen' : 'Zichtbaar' }}</span>
+                              <button
+                                type="button"
+                                class="avatar-button"
+                                [class.active]="profile()?.avatar_media_id === asset.id"
+                                [disabled]="asset.hidden || settingAvatarId() === asset.id"
+                                (click)="profile()?.avatar_media_id === asset.id ? clearAvatar() : setAvatar(asset.id)">
+                                {{ profile()?.avatar_media_id === asset.id ? 'Verwijderen' : 'Als profielfoto' }}
+                              </button>
                               <button
                                 type="button"
                                 class="icon-button"
@@ -341,8 +351,11 @@ interface AlbumDraft {
     .photo-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .7rem; margin-top: 1rem; }
     .photo-card { position: relative; overflow: hidden; margin: 0; border: 1px solid rgba(148, 163, 184, .14); border-radius: .95rem; background: #020617; }
     .photo-card img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
-    .photo-card figcaption { position: absolute; inset: auto 0 0; display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: 1.8rem .55rem .5rem; background: linear-gradient(transparent, rgba(2, 6, 23, .94)); color: #e2e8f0; font-size: .78rem; font-weight: 800; }
+    .photo-card figcaption { position: absolute; inset: auto 0 0; display: flex; justify-content: space-between; align-items: center; gap: .4rem; padding: 1.8rem .5rem .5rem; background: linear-gradient(transparent, rgba(2, 6, 23, .96)); color: #e2e8f0; font-size: .78rem; font-weight: 800; }
     .hidden-photo img { opacity: .38; filter: grayscale(.7); }
+    .avatar-badge { position: absolute; top: .5rem; left: .5rem; padding: .3rem .55rem; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #f472b6); color: #111827; font-size: .72rem; font-weight: 900; box-shadow: 0 8px 20px rgba(0, 0, 0, .25); }
+    .avatar-button { width: auto; min-height: 2rem; padding: .45rem .58rem; border: 1px solid rgba(255, 255, 255, .18); background: rgba(15, 23, 42, .88); color: #f8fafc; box-shadow: none; font-size: .72rem; }
+    .avatar-button.active { background: linear-gradient(135deg, #f59e0b, #f472b6); color: #111827; border-color: transparent; }
     .icon-button { width: 2rem; min-width: 2rem; height: 2rem; min-height: 2rem; padding: 0; border: 1px solid rgba(255, 255, 255, .16); background: rgba(15, 23, 42, .86); color: #f8fafc; box-shadow: none; }
     .pill { display: inline-flex; width: fit-content; padding: .3rem .58rem; border: 1px solid rgba(148, 163, 184, .18); border-radius: 999px; background: rgba(148, 163, 184, .1); color: #cbd5e1; font-size: .78rem; font-weight: 800; }
     .pill.private { color: #f9a8d4; border-color: rgba(244, 114, 182, .28); }
@@ -399,6 +412,7 @@ export class MyPhotosPageComponent implements OnInit {
   protected readonly session = inject(SessionService);
 
   protected readonly albums = signal<Post[]>([]);
+  protected readonly profile = signal<Profile | null>(null);
   protected readonly accessRequests = signal<PostAccessRequest[]>([]);
   protected readonly isLoadingAlbums = signal(true);
   protected readonly isLoadingRequests = signal(true);
@@ -406,6 +420,7 @@ export class MyPhotosPageComponent implements OnInit {
   protected readonly isCreating = signal(false);
   protected readonly uploadingAlbumId = signal<string | null>(null);
   protected readonly savingAlbumId = signal<string | null>(null);
+  protected readonly settingAvatarId = signal<string | null>(null);
   protected readonly editingAlbumId = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly success = signal<string | null>(null);
@@ -426,6 +441,10 @@ export class MyPhotosPageComponent implements OnInit {
       this.isLoadingRequests.set(false);
       return;
     }
+    this.api.getMyProfile().subscribe({
+      next: profile => this.profile.set(profile),
+      error: () => this.profile.set(null)
+    });
     this.loadAlbums(user.id);
     this.loadRequests();
   }
@@ -545,9 +564,44 @@ export class MyPhotosPageComponent implements OnInit {
     this.api.toggleAssetVisibility(assetId).subscribe({
       next: updated => {
         this.albums.update(items => items.map(item => item.id === album.id ? updated : item));
+        if (this.profile()?.avatar_media_id === assetId) {
+          this.profile.update(item => item ? { ...item, avatar_media_id: null, avatar_url: null } : item);
+        }
         this.success.set('Fotozichtbaarheid bijgewerkt.');
       },
       error: () => this.error.set('Fotozichtbaarheid aanpassen is niet gelukt.')
+    });
+  }
+
+  protected setAvatar(assetId: string): void {
+    this.settingAvatarId.set(assetId);
+    this.clearNotices();
+    this.api.setProfileAvatar(assetId).subscribe({
+      next: profile => {
+        this.profile.set(profile);
+        this.settingAvatarId.set(null);
+        this.success.set('Profielfoto ingesteld. Deze foto is nu openbaar zichtbaar als je avatar.');
+      },
+      error: () => {
+        this.error.set('Profielfoto instellen is niet gelukt. Maak eerst je profiel aan en probeer opnieuw.');
+        this.settingAvatarId.set(null);
+      }
+    });
+  }
+
+  protected clearAvatar(): void {
+    this.settingAvatarId.set('clearing');
+    this.clearNotices();
+    this.api.setProfileAvatar(null).subscribe({
+      next: profile => {
+        this.profile.set(profile);
+        this.settingAvatarId.set(null);
+        this.success.set('Profielfoto verwijderd.');
+      },
+      error: () => {
+        this.error.set('Profielfoto verwijderen is niet gelukt.');
+        this.settingAvatarId.set(null);
+      }
     });
   }
 

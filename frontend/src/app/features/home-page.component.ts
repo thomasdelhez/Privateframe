@@ -345,17 +345,6 @@ export class HomePageComponent implements OnInit {
     new Map(this.profiles().map(profile => [profile.user_id, profile]))
   );
 
-  private readonly photoByUserId = computed(() => {
-    const photos = new Map<string, string>();
-    for (const post of this.posts()) {
-      const imageUrl = post.assets[0]?.preview_url || post.assets[0]?.url;
-      if (imageUrl && !photos.has(post.user_id)) {
-        photos.set(post.user_id, imageUrl);
-      }
-    }
-    return photos;
-  });
-
   protected readonly onlineProfiles = computed(() =>
     this.profiles().filter(profile => this.isOnline(profile)).slice(0, 12)
   );
@@ -422,7 +411,7 @@ export class HomePageComponent implements OnInit {
   }
 
   protected profilePhoto(profile: Profile): string | null {
-    return this.photoByUserId().get(profile.user_id) || null;
+    return profile.avatar_url;
   }
 
   protected isOnline(profile: Profile): boolean {

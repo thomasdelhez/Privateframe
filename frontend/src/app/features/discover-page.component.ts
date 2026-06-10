@@ -93,7 +93,13 @@ import { SessionService } from '../core/session.service';
             @for (profile of profiles(); track profile.id) {
               <a class="tile" [routerLink]="['/discover', profile.slug]">
                 <div class="tile-head">
-                  <div class="avatar">{{ initials(profile.display_name) }}</div>
+                  <div class="avatar">
+                    @if (profile.avatar_url) {
+                      <img [src]="profile.avatar_url" alt="Profielfoto van {{ profile.display_name }}" />
+                    } @else {
+                      {{ initials(profile.display_name) }}
+                    }
+                  </div>
                   <div>
                     <h2>{{ profile.display_name }}</h2>
                     <p class="muted">/{{ profile.slug }}</p>
@@ -159,7 +165,8 @@ import { SessionService } from '../core/session.service';
     .tile:hover { transform: translateY(-2px); box-shadow: 0 22px 44px rgba(0, 0, 0, .32); border-color: rgba(251, 191, 36, .32); }
     .tile-head { display: flex; gap: .9rem; align-items: center; }
     .tile-head h2 { margin: 0; }
-    .avatar { display: grid; place-items: center; width: 3.25rem; height: 3.25rem; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #ec4899 50%, #38bdf8); color: white; font-weight: 900; flex: 0 0 auto; box-shadow: 0 10px 24px rgba(236, 72, 153, .18); }
+    .avatar { position: relative; display: grid; place-items: center; width: 3.25rem; min-width: 3.25rem; height: 3.25rem; overflow: hidden; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #ec4899 50%, #38bdf8); color: white; font-weight: 900; flex: 0 0 3.25rem; box-shadow: 0 10px 24px rgba(236, 72, 153, .18); }
+    .avatar img { position: absolute; inset: 0; display: block; width: 100%; max-width: none; height: 100%; object-fit: cover; object-position: center; }
     .muted { color: #94a3b8; margin: .15rem 0 0; }
     .meta-row { display: flex; flex-wrap: wrap; gap: .5rem; }
     .pill { border-radius: 999px; background: rgba(148, 163, 184, .12); border: 1px solid rgba(148, 163, 184, .14); color: #e2e8f0; padding: .3rem .7rem; font-size: .92rem; font-weight: 700; }

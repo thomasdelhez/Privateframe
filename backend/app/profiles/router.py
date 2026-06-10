@@ -1,15 +1,24 @@
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Query
+from fastapi.responses import FileResponse
 
 from app.auth.dependencies import AgeConfirmedUserDep, SessionDep, VerifiedUserDep
-from app.profiles.schemas import ProfileResponse, ProfileUpsertRequest, ProfileVisitSummaryResponse
+from app.profiles.schemas import (
+    ProfileAvatarRequest,
+    ProfileResponse,
+    ProfileUpsertRequest,
+    ProfileVisitSummaryResponse,
+)
 from app.profiles.service import (
     get_my_profile,
+    get_profile_avatar,
     get_profile_by_slug,
     get_profile_visits,
     list_profiles,
     register_profile_view,
+    set_profile_avatar,
     to_profile_response,
     touch_profile_activity,
     upsert_profile,
@@ -63,9 +72,20 @@ def save_my_profile(payload: ProfileUpsertRequest, user: VerifiedUserDep, sessio
     return to_profile_response(upsert_profile(user, payload, session), user, session)
 
 
+@router.put("/me/avatar", response_model=ProfileResponse)
+def save_my_avatar(payload: ProfileAvatarRequest, user: VerifiedUserDep, session: SessionDep) -> ProfileResponse:
+    return to_profile_response(set_profile_avatar(user, payload.media_id, session), user, session)
+
+
 @router.get("/me/activity", response_model=ProfileVisitSummaryResponse)
 def read_profile_activity(user: VerifiedUserDep, session: SessionDep) -> ProfileVisitSummaryResponse:
     return get_profile_visits(user, session)
+
+
+@router.get("/avatar/{user_id}")
+def read_profile_avatar(user_id: UUID, session: SessionDep) -> FileResponse:
+    asset, path = get_profile_avatar(user_id, session)
+    return FileResponse(path, media_type=asset.mime_type)
 
 
 @router.get("/{slug}", response_model=ProfileResponse)

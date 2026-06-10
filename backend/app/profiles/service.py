@@ -7,7 +7,7 @@ from sqlalchemy import String, cast, or_
 from sqlmodel import Session, desc, select
 
 from app.auth.models import User
-from app.core.enums import UserRole
+from app.core.enums import PostStatus, UserRole
 from app.profiles.models import Profile, ProfileView
 from app.profiles.schemas import (
     ProfileResponse,
@@ -49,6 +49,12 @@ def to_profile_response(
         show_online_status=profile.show_online_status,
         show_location=profile.show_location,
         register_profile_views=profile.register_profile_views,
+        avatar_media_id=profile.avatar_media_id,
+        avatar_url=(
+            f"/api/v1/profiles/avatar/{profile.user_id}?v={int(profile.updated_at.timestamp())}"
+            if profile.avatar_media_id
+            else None
+        ),
         last_active_at=None if hide_online else profile.last_active_at,
         created_at=profile.created_at,
         updated_at=profile.updated_at,
@@ -111,6 +117,39 @@ def get_my_profile(user: User, session: Session) -> Profile:
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profiel bestaat nog niet")
     return profile
+
+
+def set_profile_avatar(user: User, media_id: UUID | None, session: Session) -> Profile:
+    profile = get_my_profile(user, session)
+    if media_id is not None:
+        from app.posts.models import MediaAsset, MediaPost
+
+        asset = session.get(MediaAsset, media_id)
+        post = session.get(MediaPost, asset.post_id) if asset else None
+        if not asset or not post or post.user_id != user.id or post.status != PostStatus.PUBLISHED or asset.is_hidden:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Foto niet gevonden")
+
+    profile.avatar_media_id = media_id
+    profile.updated_at = datetime.now(UTC)
+    session.add(profile)
+    session.commit()
+    session.refresh(profile)
+    return profile
+
+
+def get_profile_avatar(user_id: UUID, session: Session):
+    from app.posts.models import MediaAsset, MediaPost
+    from app.posts.service import get_asset_file_path
+
+    profile = session.exec(select(Profile).where(Profile.user_id == user_id)).first()
+    if not profile or not profile.avatar_media_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profielfoto niet gevonden")
+
+    asset = session.get(MediaAsset, profile.avatar_media_id)
+    post = session.get(MediaPost, asset.post_id) if asset else None
+    if not asset or not post or post.user_id != user_id or post.status != PostStatus.PUBLISHED or asset.is_hidden:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profielfoto niet gevonden")
+    return asset, get_asset_file_path(asset, preview=False)
 
 
 def touch_profile_activity(user: User, session: Session) -> None:

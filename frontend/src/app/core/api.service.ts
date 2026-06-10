@@ -82,6 +82,10 @@ export class ApiService {
     return this.http.put<Profile>(`${this.baseUrl}/profiles/me`, payload, { headers: this.headers() });
   }
 
+  public setProfileAvatar(mediaId: string | null): Observable<Profile> {
+    return this.http.put<Profile>(`${this.baseUrl}/profiles/me/avatar`, { media_id: mediaId }, { headers: this.headers() });
+  }
+
   public getMyProfileActivity(): Observable<ProfileVisitSummary> {
     return this.http.get<ProfileVisitSummary>(`${this.baseUrl}/profiles/me/activity`, { headers: this.headers() });
   }
@@ -272,6 +276,8 @@ export interface Profile {
   show_online_status: boolean;
   show_location: boolean;
   register_profile_views: boolean;
+  avatar_media_id: string | null;
+  avatar_url: string | null;
   is_favorite: boolean;
   is_liked: boolean;
   is_match: boolean;

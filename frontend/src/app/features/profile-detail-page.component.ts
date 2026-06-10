@@ -30,7 +30,13 @@ interface GalleryItem {
         <p>Profiel laden...</p>
       } @else if (profile(); as item) {
         <header class="hero">
-          <div class="avatar">{{ initials(item.display_name) }}</div>
+          <div class="avatar">
+            @if (item.avatar_url) {
+              <img [src]="item.avatar_url" alt="Profielfoto van {{ item.display_name }}" />
+            } @else {
+              {{ initials(item.display_name) }}
+            }
+          </div>
           <div class="hero-copy">
             <p class="eyebrow">Profiel</p>
             <h1>{{ item.display_name }}</h1>
@@ -285,7 +291,8 @@ interface GalleryItem {
     .flow { display: grid; gap: 1.25rem; }
     .back-link { color: #fbbf24; text-decoration: none; font-weight: 700; }
     .hero { display: flex; gap: 1rem; align-items: center; padding: 1.5rem; border-radius: 1.5rem; background: linear-gradient(135deg, rgba(15, 23, 42, .98), rgba(30, 41, 59, .92) 55%, rgba(9, 9, 11, .94)); border: 1px solid rgba(148, 163, 184, .14); color: #f8fafc; }
-    .avatar { display: grid; place-items: center; width: 4.75rem; height: 4.75rem; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #ec4899 50%, #38bdf8); color: white; font-size: 1.35rem; font-weight: 900; flex: 0 0 auto; }
+    .avatar { position: relative; display: grid; place-items: center; width: 4.75rem; min-width: 4.75rem; height: 4.75rem; overflow: hidden; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #ec4899 50%, #38bdf8); color: white; font-size: 1.35rem; font-weight: 900; flex: 0 0 4.75rem; }
+    .avatar img { position: absolute; inset: 0; display: block; width: 100%; max-width: none; height: 100%; object-fit: cover; object-position: center; }
     .hero-copy { display: grid; gap: .35rem; }
     .hero-actions { position: relative; margin-left: auto; display: flex; flex-wrap: nowrap; gap: .55rem; align-items: center; }
     .profile-action { position: relative; width: 3rem; min-width: 3rem; min-height: 3rem; height: 3rem; padding: 0; border: 1px solid rgba(148, 163, 184, .25); background: rgba(15, 23, 42, .9); color: #e2e8f0; box-shadow: none; }

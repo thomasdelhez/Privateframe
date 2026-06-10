@@ -17,6 +17,10 @@ class ProfileUpsertRequest(BaseModel):
     register_profile_views: bool = True
 
 
+class ProfileAvatarRequest(BaseModel):
+    media_id: UUID | None = None
+
+
 class ProfileResponse(BaseModel):
     id: UUID
     user_id: UUID
@@ -31,6 +35,8 @@ class ProfileResponse(BaseModel):
     show_online_status: bool
     show_location: bool
     register_profile_views: bool
+    avatar_media_id: UUID | None = None
+    avatar_url: str | None = None
     is_favorite: bool = False
     is_liked: bool = False
     is_match: bool = False
