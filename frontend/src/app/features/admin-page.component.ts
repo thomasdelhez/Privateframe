@@ -121,15 +121,17 @@ import { ApiService, AdminPost, AdminReportContext, AdminUser, AuditLogEntry, Ch
                     </div>
                     <span class="pill" [class.warn]="user.status !== 'active'">{{ user.status }}</span>
                   </div>
-                  <div class="row">
+                  <div class="row user-footer">
                     <span class="muted">{{ formatDate(user.created_at) }}</span>
-                    <div class="actions">
+                    <div class="moderation-actions">
                       @if (user.profile_slug) {
-                        <a class="secondary action-link" [routerLink]="['/discover', user.profile_slug]">Open profiel</a>
+                        <a class="moderation-action profile-action" [routerLink]="['/discover', user.profile_slug]">Open profiel</a>
+                      } @else {
+                        <button type="button" class="moderation-action profile-action" disabled>Geen profiel</button>
                       }
                       @if (user.status === 'active') {
-                        <button type="button" class="secondary" (click)="restrictUser(user.id); $event.stopPropagation()">Restrict</button>
-                        <button type="button" (click)="banUser(user.id); $event.stopPropagation()">Ban</button>
+                        <button type="button" class="moderation-action restrict-action" (click)="restrictUser(user.id); $event.stopPropagation()">Restrict</button>
+                        <button type="button" class="moderation-action ban-action" (click)="banUser(user.id); $event.stopPropagation()">Ban</button>
                       }
                     </div>
                   </div>
@@ -283,35 +285,55 @@ import { ApiService, AdminPost, AdminReportContext, AdminUser, AuditLogEntry, Ch
           }
 
           @if (context.conversation; as conversation) {
-            <article class="context-card">
-              <h3>Gesprek</h3>
-              <p class="muted">{{ conversation.status }} · {{ formatDate(conversation.updated_at) }}</p>
+            <article class="context-card conversation-context">
+              <div class="conversation-summary">
+                <div>
+                  <h3>Volledige conversatie</h3>
+                  <p class="muted">
+                    {{ context.message_count ?? context.messages?.length ?? 0 }} berichten ·
+                    {{ conversation.status }} · bijgewerkt {{ formatDate(conversation.updated_at) }}
+                  </p>
+                </div>
+                @if (context.reporter) {
+                  <span class="reporter-label">
+                    Gemeld door {{ context.reporter.display_name || context.reporter.email }}
+                  </span>
+                }
+              </div>
+
               <div class="participant-row">
                 @for (participant of conversation.participants; track participant.id) {
                   <div class="participant">
                     <strong>{{ participant.display_name || participant.email }}</strong>
                     <p class="muted">{{ participant.email }}</p>
                     @if (participant.profile_slug) {
-                      <a class="secondary action-link" [routerLink]="['/discover', participant.profile_slug]" (click)="closeReportContext()">Open profiel</a>
+                      <a class="participant-link" [routerLink]="['/discover', participant.profile_slug]" (click)="closeReportContext()">Open profiel</a>
                     }
                   </div>
                 }
               </div>
-            </article>
-          }
 
-          @if (context.messages?.length) {
-            <article class="context-card">
-              <h3>Berichten</h3>
-              <div class="message-list">
-                @for (message of context.messages; track message.id) {
-                  <div class="message-item">
-                    <div class="row">
-                      <strong>{{ senderLabel(message.sender_id, context.conversation?.participants || []) }}</strong>
-                      <span class="muted">{{ formatDate(message.created_at) }}</span>
+              <div class="conversation-transcript">
+                @if (!context.messages?.length) {
+                  <p class="muted">Er staan geen berichten in deze conversatie.</p>
+                } @else {
+                  @for (message of context.messages; track message.id) {
+                    <div
+                      class="transcript-row"
+                      [class.alternate]="message.sender_id === conversation.user_b_id"
+                      [class.reported]="message.id === context.reported_message_id">
+                      <div class="message-item">
+                        <div class="message-head">
+                          <strong>{{ senderLabel(message.sender_id, conversation.participants) }}</strong>
+                          <span class="muted">{{ formatDate(message.created_at) }}</span>
+                        </div>
+                        <p>{{ message.body }}</p>
+                        @if (message.id === context.reported_message_id) {
+                          <span class="reported-label">Dit bericht is gemeld</span>
+                        }
+                      </div>
                     </div>
-                    <p>{{ message.body }}</p>
-                  </div>
+                  }
                 }
               </div>
             </article>
@@ -386,15 +408,33 @@ import { ApiService, AdminPost, AdminReportContext, AdminUser, AuditLogEntry, Ch
     .pill.good { color: #86efac; border-color: rgba(34, 197, 94, .22); }
     .linkish { color: #fbbf24; font-weight: 700; }
     .action-link { text-decoration: none; }
+    .user-footer { display: grid; grid-template-columns: minmax(0, 1fr); gap: .65rem; width: 100%; }
+    .moderation-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; width: 100%; }
+    .moderation-action { display: inline-flex; align-items: center; justify-content: center; min-height: 2.65rem; width: 100%; padding: .68rem .75rem; border: 1px solid rgba(148, 163, 184, .25); border-radius: .8rem; background: rgba(15, 23, 42, .9); box-shadow: none; color: #f8fafc; font-weight: 800; text-decoration: none; }
+    .moderation-action:hover { transform: translateY(-1px); }
+    .profile-action { border-color: rgba(56, 189, 248, .3); color: #bae6fd; }
+    .restrict-action { border-color: rgba(251, 191, 36, .32); color: #fde68a; }
+    .ban-action { border-color: rgba(248, 113, 113, .36); color: #fecaca; background: rgba(127, 29, 29, .18); }
     .error { color: #fecaca; background: rgba(127, 29, 29, .45); padding: .75rem; border-radius: .5rem; }
     .success { color: #bbf7d0; background: rgba(20, 83, 45, .45); padding: .75rem; border-radius: .5rem; }
     .modal-backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: 1.5rem; background: rgba(2, 6, 23, .78); backdrop-filter: blur(8px); z-index: 120; }
     .modal { width: min(920px, 100%); max-height: min(84vh, 980px); overflow: auto; display: grid; gap: 1rem; }
     .context-card { display: grid; gap: .75rem; padding: 1rem; border-radius: 1rem; border: 1px solid rgba(148, 163, 184, .14); background: rgba(15, 23, 42, .72); }
     .context-card h3, .context-card p { margin: 0; }
+    .conversation-context { gap: 1rem; }
+    .conversation-summary { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+    .reporter-label, .reported-label { display: inline-flex; width: fit-content; padding: .3rem .6rem; border-radius: 999px; border: 1px solid rgba(251, 191, 36, .28); background: rgba(120, 53, 15, .22); color: #fde68a; font-size: .78rem; font-weight: 800; }
     .participant-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem; }
     .participant { display: grid; gap: .35rem; padding: .9rem; border-radius: .9rem; background: rgba(2, 6, 23, .56); border: 1px solid rgba(148, 163, 184, .14); }
+    .participant-link { color: #bae6fd; font-weight: 800; text-decoration: none; }
+    .conversation-transcript { display: grid; gap: .7rem; padding: .85rem; border-radius: 1rem; background: rgba(2, 6, 23, .48); border: 1px solid rgba(148, 163, 184, .12); }
+    .transcript-row { display: flex; justify-content: flex-start; }
+    .transcript-row.alternate { justify-content: flex-end; }
+    .transcript-row.reported .message-item { border-color: rgba(251, 191, 36, .46); box-shadow: 0 0 0 2px rgba(251, 191, 36, .08); }
     .message-item { display: grid; gap: .45rem; padding: .85rem 1rem; border-radius: .9rem; background: rgba(2, 6, 23, .56); border: 1px solid rgba(148, 163, 184, .14); }
+    .transcript-row .message-item { width: min(82%, 620px); background: rgba(15, 23, 42, .9); }
+    .transcript-row.alternate .message-item { background: rgba(76, 29, 149, .2); border-color: rgba(192, 132, 252, .2); }
+    .message-head { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
     .message-item p { margin: 0; color: #e2e8f0; white-space: pre-wrap; }
     .asset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .75rem; }
     .asset-grid img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: .9rem; border: 1px solid rgba(148, 163, 184, .16); background: #020617; }
@@ -422,17 +462,22 @@ import { ApiService, AdminPost, AdminReportContext, AdminUser, AuditLogEntry, Ch
       .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
       .actions > * { width: 100%; min-width: 0; }
       .item .actions { margin-top: .25rem; }
+      .user-footer { justify-content: stretch; }
+      .moderation-actions { margin-top: .25rem; justify-self: stretch; }
       .item-button { border-radius: .9rem; }
       .modal-backdrop { align-items: end; padding: .6rem; }
       .modal { width: 100%; max-height: 90dvh; border-radius: 1.25rem 1.25rem .65rem .65rem; padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
       .modal .panel-head { position: sticky; top: -.85rem; z-index: 3; margin: -.85rem -.85rem 0; padding: .9rem; border-bottom: 1px solid rgba(148, 163, 184, .14); background: rgba(2, 6, 23, .97); }
       .participant-row, .asset-grid { grid-template-columns: 1fr; }
-      .message-item .row { display: flex; justify-content: space-between; }
+      .conversation-summary { display: grid; }
+      .transcript-row .message-item { width: 92%; }
     }
     @media (max-width: 480px) {
       .actions { grid-template-columns: 1fr; }
+      .moderation-actions { grid-template-columns: 1fr; }
       .context-card { padding: .85rem; }
-      .message-item .row { display: grid; }
+      .message-head { display: grid; gap: .15rem; }
+      .transcript-row .message-item { width: 100%; }
     }
   `]
 })

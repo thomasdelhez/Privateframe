@@ -339,6 +339,7 @@ export interface AuditLogEntry {
 
 export interface AdminReportContext {
   report: ReportItem;
+  reporter?: AdminUser | null;
   profile?: Profile | null;
   post?: AdminPost | null;
   conversation?: {
@@ -350,6 +351,8 @@ export interface AdminReportContext {
     updated_at: string;
     participants: AdminUser[];
   } | null;
+  reported_message_id?: string | null;
+  message_count?: number;
   messages?: ChatMessage[];
 }
 

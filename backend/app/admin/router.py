@@ -183,6 +183,7 @@ def read_report_context(report_id: UUID, admin: AdminUserDep, session: SessionDe
     if not report:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Melding niet gevonden")
 
+    reporter = session.get(User, report.reporter_user_id)
     response: dict = {
         "report": {
             "id": report.id,
@@ -194,7 +195,8 @@ def read_report_context(report_id: UUID, admin: AdminUserDep, session: SessionDe
             "status": report.status,
             "created_at": report.created_at,
             "resolved_at": report.resolved_at,
-        }
+        },
+        "reporter": _serialize_user(reporter, session) if reporter else None,
     }
 
     if report.target_type.value == "profile":
@@ -226,6 +228,8 @@ def read_report_context(report_id: UUID, admin: AdminUserDep, session: SessionDe
                     if user
                 ],
             }
+            response["reported_message_id"] = message_target.id if message_target else None
+            response["message_count"] = len(messages)
             response["messages"] = [
                 {
                     "id": item.id,
