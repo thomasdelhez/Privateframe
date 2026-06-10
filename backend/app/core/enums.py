@@ -20,6 +20,12 @@ class PostStatus(str, Enum):
     REMOVED = "removed"
 
 
+class AccessRequestStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    DENIED = "denied"
+
+
 class ConversationStatus(str, Enum):
     ACTIVE = "active"
     BLOCKED = "blocked"

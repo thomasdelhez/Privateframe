@@ -2,11 +2,12 @@ from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Body, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, Request, status
 from sqlmodel import desc, select
 
 from app.auth.dependencies import AdminUserDep, AgeConfirmedUserDep, SessionDep
 from app.core.enums import ReportReason, ReportStatus, ReportTargetType
+from app.core.rate_limit import enforce_user_rate_limit
 from app.reports.models import Report
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
@@ -28,6 +29,7 @@ def _serialize(item: Report) -> dict:
 
 @router.post("")
 def create_report(
+    request: Request,
     user: AgeConfirmedUserDep,
     session: SessionDep,
     target_type: Annotated[ReportTargetType, Body(embed=True)],
@@ -35,6 +37,20 @@ def create_report(
     reason: Annotated[ReportReason, Body(embed=True)],
     description: Annotated[str | None, Body(embed=True)] = None,
 ) -> dict:
+    enforce_user_rate_limit(request, "report", str(user.id), attempts=20, window_seconds=3600)
+    existing = session.exec(
+        select(Report).where(
+            Report.reporter_user_id == user.id,
+            Report.target_type == target_type,
+            Report.target_id == target_id,
+            Report.status == ReportStatus.OPEN,
+        )
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Je hebt dit al gemeld; de melding wordt nog beoordeeld",
+        )
     item = Report(
         reporter_user_id=user.id,
         target_type=target_type,

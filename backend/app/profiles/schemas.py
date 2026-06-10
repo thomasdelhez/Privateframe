@@ -10,6 +10,11 @@ class ProfileUpsertRequest(BaseModel):
     location_label: str | None = Field(default=None, max_length=120)
     gender: str | None = Field(default=None, max_length=80)
     age_label: str | None = Field(default=None, max_length=40)
+    interests: list[str] = Field(default_factory=list, max_length=10)
+    discoverable: bool = True
+    show_online_status: bool = True
+    show_location: bool = True
+    register_profile_views: bool = True
 
 
 class ProfileResponse(BaseModel):
@@ -21,6 +26,15 @@ class ProfileResponse(BaseModel):
     location_label: str | None
     gender: str | None
     age_label: str | None
+    interests: list[str]
+    discoverable: bool
+    show_online_status: bool
+    show_location: bool
+    register_profile_views: bool
+    is_favorite: bool = False
+    is_liked: bool = False
+    is_match: bool = False
+    is_blocked: bool = False
     last_active_at: datetime | None
     created_at: datetime
     updated_at: datetime

@@ -1,8 +1,10 @@
 import re
 from datetime import UTC, datetime, timedelta
+from io import BytesIO
 
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 from sqlmodel import Session, select
 
 from app.auth.models import UserSession
@@ -31,6 +33,12 @@ def _email_token(body: str) -> str:
 
 def _headers(access_value: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {access_value}"}
+
+
+def _png_bytes() -> bytes:
+    output = BytesIO()
+    Image.new("RGB", (24, 24), "#9333ea").save(output, format="PNG")
+    return output.getvalue()
 
 
 def test_registration_requires_ten_character_password(client: TestClient) -> None:
@@ -161,7 +169,7 @@ def test_placeholder_endpoint_returns_updated_post(
     response = client.post(
         f"/api/v1/posts/{post_id}/assets",
         headers=_headers(access_value),
-        files={"file": ("preview.png", b"\x89PNG\r\n\x1a\nsmall-image", "image/png")},
+        files={"file": ("preview.png", _png_bytes(), "image/png")},
     )
     assert response.status_code == 200
     assert response.json()["post"]["id"] == post_id

@@ -1,7 +1,15 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ApiService, Post, Profile, ProfileVisitSummary, ReportItem } from '../core/api.service';
+import {
+  AccountSession,
+  ApiService,
+  Post,
+  PostAccessRequest,
+  Profile,
+  ProfileVisitSummary,
+  ReportItem
+} from '../core/api.service';
 import { SessionService } from '../core/session.service';
 
 @Component({
@@ -63,6 +71,20 @@ import { SessionService } from '../core/session.service';
                 <textarea name="bio" [(ngModel)]="bio" maxlength="1000" rows="6"></textarea>
               </label>
 
+              <label>
+                Interesses
+                <input name="interests" [(ngModel)]="interestsText" maxlength="300" placeholder="fotografie, reizen, muziek" />
+                <span class="field-help">Maximaal 10, gescheiden door komma's.</span>
+              </label>
+
+              <fieldset class="privacy-settings">
+                <legend>Privacy</legend>
+                <label><input type="checkbox" name="discoverable" [(ngModel)]="discoverable" /><span>Mijn profiel tonen in Ontdekken</span></label>
+                <label><input type="checkbox" name="showOnlineStatus" [(ngModel)]="showOnlineStatus" /><span>Mijn online status tonen</span></label>
+                <label><input type="checkbox" name="showLocation" [(ngModel)]="showLocation" /><span>Mijn locatie tonen</span></label>
+                <label><input type="checkbox" name="registerProfileViews" [(ngModel)]="registerProfileViews" /><span>Profielbezoeken registreren</span></label>
+              </fieldset>
+
               <button type="submit" [disabled]="isSavingProfile() || !displayName.trim()">
                 {{ isSavingProfile() ? 'Opslaan...' : 'Profiel opslaan' }}
               </button>
@@ -91,6 +113,11 @@ import { SessionService } from '../core/session.service';
                   <label>
                     Beschrijving
                     <textarea name="postDescription" [(ngModel)]="postDescription" maxlength="1200" rows="3"></textarea>
+                  </label>
+
+                  <label class="privacy-toggle">
+                    <input type="checkbox" name="postPrivate" [(ngModel)]="postPrivate" />
+                    <span>Privéalbum: bezoekers moeten eerst toegang aanvragen</span>
                   </label>
 
                   <div class="checks">
@@ -136,6 +163,9 @@ import { SessionService } from '../core/session.service';
                                 <img [src]="asset.preview_url || asset.url || ''" alt="Geuploade foto" />
                                 <figcaption>
                                   <span class="pill">{{ asset.locked ? 'preview' : 'volledig zichtbaar' }}</span>
+                                  <button type="button" class="secondary compact-button" (click)="togglePhoto(post, asset.id)">
+                                    {{ asset.hidden ? 'Weergeven' : 'Verbergen' }}
+                                  </button>
                                 </figcaption>
                               </figure>
                             }
@@ -215,6 +245,67 @@ import { SessionService } from '../core/session.service';
             </article>
 
             <article class="panel">
+              <h2>Fotoverzoeken</h2>
+              <p class="muted">Bepaal wie je privéalbums volledig mag bekijken.</p>
+              @if (isLoadingAccessRequests()) {
+                <p>Verzoeken laden...</p>
+              } @else if (accessRequests().length === 0) {
+                <p class="muted">Er zijn nog geen toegangsverzoeken.</p>
+              } @else {
+                <div class="activity-list">
+                  @for (request of accessRequests(); track request.id) {
+                    <div class="activity-item request-item">
+                      <div>
+                        <strong>{{ request.requester_display_name || 'Onbekend profiel' }}</strong>
+                        <p class="muted">{{ request.post_title }} · {{ request.status }}</p>
+                      </div>
+                      @if (request.status === 'pending') {
+                        <div class="compact-actions">
+                          <button type="button" (click)="decideAccess(request, 'approve')">Toestaan</button>
+                          <button type="button" class="secondary" (click)="decideAccess(request, 'deny')">Weigeren</button>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </article>
+
+            <article class="panel">
+              <h2>Geblokkeerde profielen</h2>
+              @if (blockedProfiles().length === 0) {
+                <p class="muted">Je hebt niemand geblokkeerd.</p>
+              } @else {
+                <div class="activity-list">
+                  @for (blocked of blockedProfiles(); track blocked.id) {
+                    <div class="activity-item">
+                      <strong>{{ blocked.display_name }}</strong>
+                      <button type="button" class="secondary compact-button" (click)="unblock(blocked)">Deblokkeren</button>
+                    </div>
+                  }
+                </div>
+              }
+            </article>
+
+            <article class="panel">
+              <h2>Actieve sessies</h2>
+              <p class="muted">Trek apparaten in die je niet meer gebruikt of herkent.</p>
+              <div class="activity-list">
+                @for (accountSession of sessions(); track accountSession.id) {
+                  <div class="activity-item">
+                    <div>
+                      <strong>{{ accountSession.current ? 'Dit apparaat' : 'Andere sessie' }}</strong>
+                      <p class="muted">Aangemeld {{ formatDate(accountSession.created_at) }}</p>
+                    </div>
+                    <button type="button" class="secondary compact-button" (click)="revoke(accountSession)">
+                      Intrekken
+                    </button>
+                  </div>
+                }
+              </div>
+            </article>
+
+            <article class="panel">
               <div class="activity-head">
                 <div>
                   <h2>Mijn meldingen</h2>
@@ -270,6 +361,12 @@ import { SessionService } from '../core/session.service';
     .checks label { display: flex; align-items: center; gap: .65rem; min-width: 0; padding: .7rem .8rem; border: 1px solid rgba(148, 163, 184, .14); border-radius: .8rem; background: rgba(15, 23, 42, .58); cursor: pointer; }
     .checks input[type="checkbox"] { flex: 0 0 auto; width: 1.2rem; height: 1.2rem; margin: 0; padding: 0; accent-color: #ec4899; }
     .checks span { min-width: 0; line-height: 1.35; }
+    .privacy-settings { display: grid; gap: .65rem; margin: 0; padding: 1rem; border: 1px solid rgba(148, 163, 184, .14); border-radius: 1rem; }
+    .privacy-settings label, .privacy-toggle { display: flex; align-items: center; gap: .65rem; }
+    .privacy-settings input, .privacy-toggle input { width: 1.2rem; height: 1.2rem; flex: 0 0 auto; }
+    .field-help { color: #94a3b8; font-size: .85rem; font-weight: 400; }
+    .compact-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+    .compact-actions button, .compact-button { width: auto; min-height: 2.5rem; padding: .65rem .85rem; }
     .preview-card { display: flex; gap: .9rem; align-items: center; }
     .avatar { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #ec4899 50%, #38bdf8); color: white; font-weight: 900; flex: 0 0 auto; box-shadow: 0 10px 24px rgba(236, 72, 153, .18); }
     .muted { color: #94a3b8; }
@@ -302,6 +399,8 @@ import { SessionService } from '../core/session.service';
       .title-row, .gallery-card-head, .activity-item { display: grid; }
       .duo, .checks { grid-template-columns: 1fr; }
       .public-profile-link { justify-self: start; }
+      .request-item, .compact-actions { display: grid; justify-content: stretch; }
+      .compact-actions button, .compact-button { width: 100%; }
     }
   `]
 })
@@ -313,11 +412,15 @@ export class ProfilePageComponent implements OnInit {
   protected readonly gallery = signal<Post[]>([]);
   protected readonly activity = signal<ProfileVisitSummary | null>(null);
   protected readonly myReports = signal<ReportItem[]>([]);
+  protected readonly accessRequests = signal<PostAccessRequest[]>([]);
+  protected readonly blockedProfiles = signal<Profile[]>([]);
+  protected readonly sessions = signal<AccountSession[]>([]);
   protected readonly isSavingProfile = signal(false);
   protected readonly isSavingPost = signal(false);
   protected readonly isLoadingActivity = signal(false);
   protected readonly isLoadingGallery = signal(false);
   protected readonly isLoadingReports = signal(false);
+  protected readonly isLoadingAccessRequests = signal(false);
   protected readonly uploadingPostId = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly activityError = signal<string | null>(null);
@@ -328,9 +431,15 @@ export class ProfilePageComponent implements OnInit {
   protected ageLabel = '';
   protected gender = '';
   protected bio = '';
+  protected interestsText = '';
+  protected discoverable = true;
+  protected showOnlineStatus = true;
+  protected showLocation = true;
+  protected registerProfileViews = true;
 
   protected postTitle = '';
   protected postDescription = '';
+  protected postPrivate = false;
   protected ruleAge = true;
   protected ruleRights = true;
   protected ruleSafe = true;
@@ -354,6 +463,9 @@ export class ProfilePageComponent implements OnInit {
 
     this.loadActivity();
     this.loadReports();
+    this.loadAccessRequests();
+    this.api.getBlockedProfiles().subscribe({ next: items => this.blockedProfiles.set(items), error: () => this.blockedProfiles.set([]) });
+    this.api.getSessions().subscribe({ next: items => this.sessions.set(items), error: () => this.sessions.set([]) });
   }
 
   protected canCreatePost(): boolean {
@@ -374,7 +486,12 @@ export class ProfilePageComponent implements OnInit {
       location_label: this.locationLabel.trim() || null,
       age_label: this.ageLabel.trim() || null,
       gender: this.gender.trim() || null,
-      bio: this.bio.trim() || null
+      bio: this.bio.trim() || null,
+      interests: this.interestsText.split(',').map(item => item.trim()).filter(Boolean).slice(0, 10),
+      discoverable: this.discoverable,
+      show_online_status: this.showOnlineStatus,
+      show_location: this.showLocation,
+      register_profile_views: this.registerProfileViews
     }).subscribe({
       next: profile => {
         this.applyProfile(profile);
@@ -396,6 +513,7 @@ export class ProfilePageComponent implements OnInit {
     this.api.createPost({
       title: this.postTitle.trim(),
       description: this.postDescription.trim() || null,
+      is_private: this.postPrivate,
       rule_age: this.ruleAge,
       rule_rights: this.ruleRights,
       rule_safe: this.ruleSafe,
@@ -405,6 +523,7 @@ export class ProfilePageComponent implements OnInit {
         this.gallery.set([post, ...this.gallery()]);
         this.postTitle = '';
         this.postDescription = '';
+        this.postPrivate = false;
         this.success.set('Fotoalbum aangemaakt. Voeg nu je eerste foto toe.');
         this.isSavingPost.set(false);
       },
@@ -441,6 +560,13 @@ export class ProfilePageComponent implements OnInit {
     });
   }
 
+  protected togglePhoto(post: Post, assetId: string): void {
+    this.api.toggleAssetVisibility(assetId).subscribe({
+      next: updated => this.gallery.update(items => items.map(item => item.id === post.id ? updated : item)),
+      error: () => this.error.set('Fotozichtbaarheid aanpassen is niet gelukt.')
+    });
+  }
+
   protected loadActivity(): void {
     this.isLoadingActivity.set(true);
     this.activityError.set(null);
@@ -468,6 +594,48 @@ export class ProfilePageComponent implements OnInit {
         this.myReports.set([]);
         this.isLoadingReports.set(false);
       }
+    });
+  }
+
+  private loadAccessRequests(): void {
+    this.isLoadingAccessRequests.set(true);
+    this.api.getIncomingPostAccessRequests().subscribe({
+      next: items => {
+        this.accessRequests.set(items);
+        this.isLoadingAccessRequests.set(false);
+      },
+      error: () => {
+        this.accessRequests.set([]);
+        this.isLoadingAccessRequests.set(false);
+      }
+    });
+  }
+
+  protected decideAccess(request: PostAccessRequest, decision: 'approve' | 'deny'): void {
+    this.api.decidePostAccess(request.id, decision).subscribe({
+      next: updated => this.accessRequests.update(items => items.map(item => item.id === updated.id ? updated : item)),
+      error: () => this.error.set('Het fotoverzoek kon niet worden bijgewerkt.')
+    });
+  }
+
+  protected unblock(profile: Profile): void {
+    this.api.unblockUser(profile.user_id).subscribe({
+      next: () => this.blockedProfiles.update(items => items.filter(item => item.user_id !== profile.user_id)),
+      error: () => this.error.set('Deblokkeren is niet gelukt.')
+    });
+  }
+
+  protected revoke(accountSession: AccountSession): void {
+    this.api.revokeSession(accountSession.id).subscribe({
+      next: () => {
+        if (accountSession.current) {
+          this.session.clear();
+          window.location.assign('/login');
+          return;
+        }
+        this.sessions.update(items => items.filter(item => item.id !== accountSession.id));
+      },
+      error: () => this.error.set('Sessie intrekken is niet gelukt.')
     });
   }
 
@@ -508,5 +676,10 @@ export class ProfilePageComponent implements OnInit {
     this.ageLabel = profile.age_label ?? '';
     this.gender = profile.gender ?? '';
     this.bio = profile.bio ?? '';
+    this.interestsText = profile.interests.join(', ');
+    this.discoverable = profile.discoverable;
+    this.showOnlineStatus = profile.show_online_status;
+    this.showLocation = profile.show_location;
+    this.registerProfileViews = profile.register_profile_views;
   }
 }

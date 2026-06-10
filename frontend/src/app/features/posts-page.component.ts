@@ -190,6 +190,7 @@ export class PostsPageComponent implements OnInit {
     this.api.createPost({
       title: this.title.trim(),
       description: this.description.trim() || null,
+      is_private: false,
       rule_age: this.ruleAge,
       rule_rights: this.ruleRights,
       rule_safe: this.ruleSafe,

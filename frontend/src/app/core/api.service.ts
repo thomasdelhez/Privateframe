@@ -46,7 +46,7 @@ export class ApiService {
     return this.http.post<{ age_confirmed: boolean }>(`${this.baseUrl}/auth/age/confirm`, {}, { headers: this.headers() });
   }
 
-  public getProfiles(filters?: { q?: string; location?: string; limit?: number }): Observable<Profile[]> {
+  public getProfiles(filters?: ProfileFilters): Observable<Profile[]> {
     const params = new URLSearchParams();
     if (filters?.q) {
       params.set('q', filters.q);
@@ -54,6 +54,13 @@ export class ApiService {
     if (filters?.location) {
       params.set('location', filters.location);
     }
+    if (filters?.ageMin) params.set('age_min', String(filters.ageMin));
+    if (filters?.ageMax) params.set('age_max', String(filters.ageMax));
+    if (filters?.gender) params.set('gender', filters.gender);
+    if (filters?.onlineOnly) params.set('online_only', 'true');
+    if (filters?.withPhotos) params.set('with_photos', 'true');
+    if (filters?.favoritesOnly) params.set('favorites_only', 'true');
+    if (filters?.matchesOnly) params.set('matches_only', 'true');
     if (filters?.limit) {
       params.set('limit', String(filters.limit));
     }
@@ -99,6 +106,54 @@ export class ApiService {
     return this.http.post<PostAssetUploadResponse>(`${this.baseUrl}/posts/${postId}/assets`, formData, {
       headers: this.headers()
     });
+  }
+
+  public toggleAssetVisibility(assetId: string): Observable<Post> {
+    return this.http.post<Post>(`${this.baseUrl}/posts/assets/${assetId}/visibility`, {}, { headers: this.headers() });
+  }
+
+  public requestPostAccess(postId: string): Observable<PostAccessRequest> {
+    return this.http.post<PostAccessRequest>(`${this.baseUrl}/posts/${postId}/access`, {}, { headers: this.headers() });
+  }
+
+  public getIncomingPostAccessRequests(): Observable<PostAccessRequest[]> {
+    return this.http.get<PostAccessRequest[]>(`${this.baseUrl}/posts/access/incoming`, { headers: this.headers() });
+  }
+
+  public decidePostAccess(requestId: string, decision: 'approve' | 'deny'): Observable<PostAccessRequest> {
+    return this.http.post<PostAccessRequest>(
+      `${this.baseUrl}/posts/access/${requestId}/${decision}`,
+      {},
+      { headers: this.headers() }
+    );
+  }
+
+  public toggleFavorite(userId: string): Observable<{ enabled: boolean }> {
+    return this.http.post<{ enabled: boolean }>(`${this.baseUrl}/social/favorites/${userId}`, {}, { headers: this.headers() });
+  }
+
+  public toggleLike(userId: string): Observable<{ enabled: boolean; matched: boolean }> {
+    return this.http.post<{ enabled: boolean; matched: boolean }>(`${this.baseUrl}/social/likes/${userId}`, {}, { headers: this.headers() });
+  }
+
+  public blockUser(userId: string): Observable<{ blocked: boolean }> {
+    return this.http.post<{ blocked: boolean }>(`${this.baseUrl}/social/blocks/${userId}`, {}, { headers: this.headers() });
+  }
+
+  public unblockUser(userId: string): Observable<{ blocked: boolean }> {
+    return this.http.delete<{ blocked: boolean }>(`${this.baseUrl}/social/blocks/${userId}`, { headers: this.headers() });
+  }
+
+  public getBlockedProfiles(): Observable<Profile[]> {
+    return this.http.get<Profile[]>(`${this.baseUrl}/social/blocks`, { headers: this.headers() });
+  }
+
+  public getSessions(): Observable<AccountSession[]> {
+    return this.http.get<AccountSession[]>(`${this.baseUrl}/auth/sessions`, { headers: this.headers() });
+  }
+
+  public revokeSession(sessionId: string): Observable<MessageResponse> {
+    return this.http.delete<MessageResponse>(`${this.baseUrl}/auth/sessions/${sessionId}`, { headers: this.headers() });
   }
 
   public getConversations(): Observable<Conversation[]> {
@@ -208,6 +263,15 @@ export interface Profile {
   location_label: string | null;
   gender: string | null;
   age_label: string | null;
+  interests: string[];
+  discoverable: boolean;
+  show_online_status: boolean;
+  show_location: boolean;
+  register_profile_views: boolean;
+  is_favorite: boolean;
+  is_liked: boolean;
+  is_match: boolean;
+  is_blocked: boolean;
   last_active_at: string | null;
   created_at: string;
   updated_at: string;
@@ -219,6 +283,24 @@ export interface ProfileSave {
   location_label?: string | null;
   gender?: string | null;
   age_label?: string | null;
+  interests: string[];
+  discoverable: boolean;
+  show_online_status: boolean;
+  show_location: boolean;
+  register_profile_views: boolean;
+}
+
+export interface ProfileFilters {
+  q?: string;
+  location?: string;
+  ageMin?: number;
+  ageMax?: number;
+  gender?: string;
+  onlineOnly?: boolean;
+  withPhotos?: boolean;
+  favoritesOnly?: boolean;
+  matchesOnly?: boolean;
+  limit?: number;
 }
 
 export interface ProfileVisit {
@@ -235,6 +317,7 @@ export interface ProfileVisitSummary {
 export interface PostCreate {
   title: string;
   description?: string | null;
+  is_private: boolean;
   rule_age: boolean;
   rule_rights: boolean;
   rule_safe: boolean;
@@ -246,14 +329,35 @@ export interface Post {
   user_id: string;
   title: string;
   description: string | null;
+  is_private: boolean;
+  access_status: 'pending' | 'approved' | 'denied' | null;
   status: string;
   created_at: string;
-  assets: { id: string; locked: boolean; preview_url?: string | null; url?: string | null }[];
+  assets: { id: string; locked: boolean; hidden: boolean; preview_url?: string | null; url?: string | null }[];
 }
 
 export interface PostAssetUploadResponse {
   post: Post;
-  asset: { id: string; locked: boolean; preview_url?: string | null; url?: string | null };
+  asset: { id: string; locked: boolean; hidden: boolean; preview_url?: string | null; url?: string | null };
+}
+
+export interface PostAccessRequest {
+  id: string;
+  post_id: string;
+  requester_user_id: string;
+  requester_display_name: string | null;
+  requester_slug: string | null;
+  post_title: string;
+  status: 'pending' | 'approved' | 'denied';
+  created_at: string;
+  decided_at: string | null;
+}
+
+export interface AccountSession {
+  id: string;
+  created_at: string;
+  expires_at: string;
+  current: boolean;
 }
 
 export interface Conversation {

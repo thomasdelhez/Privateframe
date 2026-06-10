@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.posts.router import router as posts_router
 from app.profiles.router import router as profiles_router
 from app.reports.router import router as reports_router
+from app.social.router import router as social_router
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, docs_url=None, redoc_url=None)
@@ -35,6 +36,7 @@ app.include_router(billing_router, prefix=settings.api_prefix)
 app.include_router(chat_router, prefix=settings.api_prefix)
 app.include_router(reports_router, prefix=settings.api_prefix)
 app.include_router(admin_router, prefix=settings.api_prefix)
+app.include_router(social_router, prefix=settings.api_prefix)
 
 
 @app.get("/docs", include_in_schema=False)

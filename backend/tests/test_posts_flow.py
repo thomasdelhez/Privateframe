@@ -1,6 +1,8 @@
 import re
+from io import BytesIO
 
 from fastapi.testclient import TestClient
+from PIL import Image
 
 
 def _email_token(body: str) -> str:
@@ -11,6 +13,12 @@ def _email_token(body: str) -> str:
 
 def _headers(access_value: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {access_value}"}
+
+
+def _png_bytes() -> bytes:
+    output = BytesIO()
+    Image.new("RGB", (32, 32), "#d946ef").save(output, format="PNG")
+    return output.getvalue()
 
 
 def _create_onboarded_user(
@@ -58,7 +66,7 @@ def test_uploaded_asset_has_preview_and_full_access_rules(
     upload = client.post(
         f"/api/v1/posts/{post_id}/assets",
         headers=_headers(owner_access),
-        files={"file": ("studio.png", b"\x89PNG\r\n\x1a\nasset-bytes", "image/png")},
+        files={"file": ("studio.png", _png_bytes(), "image/png")},
     )
     assert upload.status_code == 200
     asset_id = upload.json()["asset"]["id"]
@@ -79,3 +87,4 @@ def test_uploaded_asset_has_preview_and_full_access_rules(
     full_for_owner = client.get(f"/api/v1/posts/assets/{asset_id}", headers=_headers(owner_access))
     assert full_for_owner.status_code == 200
     assert full_for_owner.content.startswith(b"\x89PNG")
+    assert preview.content != full_for_owner.content

@@ -5,11 +5,14 @@ import { ApiService, Post, Profile, ReportReason } from '../core/api.service';
 import { SessionService } from '../core/session.service';
 
 interface GalleryItem {
+  postId: string;
   assetId: string;
   imageUrl: string;
   locked: boolean;
   title: string;
   description: string | null;
+  isPrivate: boolean;
+  accessStatus: Post['access_status'];
 }
 
 @Component({
@@ -43,6 +46,14 @@ interface GalleryItem {
             </div>
           </div>
           <div class="hero-actions">
+            @if (!isOwnProfile()) {
+              <button type="button" class="secondary" (click)="toggleFavorite()" [disabled]="isUpdatingRelationship()">
+                {{ item.is_favorite ? 'Verwijder favoriet' : 'Bewaar favoriet' }}
+              </button>
+              <button type="button" (click)="toggleLike()" [disabled]="isUpdatingRelationship()">
+                {{ item.is_liked ? 'Like verwijderen' : 'Like profiel' }}
+              </button>
+            }
             @if (!isOwnProfile() && session.isPremium()) {
               <button type="button" (click)="startConversation()" [disabled]="isStartingConversation()">
                 {{ isStartingConversation() ? 'Openen...' : 'Chat starten' }}
@@ -51,6 +62,9 @@ interface GalleryItem {
             @if (!isOwnProfile()) {
               <button type="button" class="secondary" (click)="toggleReportComposer()">
                 {{ isReportComposerOpen() ? 'Annuleren' : 'Profiel melden' }}
+              </button>
+              <button type="button" class="danger-action" (click)="blockProfile()" [disabled]="isUpdatingRelationship()">
+                Blokkeren
               </button>
             }
           </div>
@@ -95,6 +109,16 @@ interface GalleryItem {
             <h2>Over {{ item.display_name }}</h2>
             <p>{{ item.bio || 'Nog geen beschrijving ingevuld.' }}</p>
           </article>
+          @if (item.interests.length > 0) {
+            <article class="panel">
+              <h2>Interesses</h2>
+              <div class="meta-row">
+                @for (interest of item.interests; track interest) {
+                  <span class="pill">{{ interest }}</span>
+                }
+              </div>
+            </article>
+          }
 
           <article class="panel">
             <h2>Profiel</h2>
@@ -128,6 +152,19 @@ interface GalleryItem {
           } @else if (galleryItems().length === 0) {
             <p class="muted">Deze gebruiker heeft nog geen foto's gedeeld.</p>
           } @else {
+            @for (album of privateAlbums(); track album.id) {
+              <div class="access-card">
+                <div>
+                  <strong>{{ album.title }}</strong>
+                  <p class="muted">Privéalbum · {{ accessStatusLabel(album.access_status) }}</p>
+                </div>
+                @if (!album.access_status || album.access_status === 'denied') {
+                  <button type="button" class="secondary compact-button" (click)="requestAccess(album)">
+                    Toegang aanvragen
+                  </button>
+                }
+              </div>
+            }
             <div class="gallery-grid">
               @for (item of galleryItems(); track item.assetId; let index = $index) {
                 <button type="button" class="gallery-item" (click)="openLightbox(index)">
@@ -167,7 +204,9 @@ interface GalleryItem {
                   <p>{{ item.description }}</p>
                 }
                 @if (item.locked) {
-                  <p class="muted">Deze gebruiker heeft meer zichtbaar voor premiumaccounts.</p>
+                  <p class="muted">
+                    {{ item.isPrivate ? 'Vraag toegang tot dit privéalbum aan.' : 'De volledige foto is zichtbaar met premium.' }}
+                  </p>
                 }
               </figcaption>
             </figure>
@@ -191,6 +230,7 @@ interface GalleryItem {
     .avatar { display: grid; place-items: center; width: 4.75rem; height: 4.75rem; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #ec4899 50%, #38bdf8); color: white; font-size: 1.35rem; font-weight: 900; flex: 0 0 auto; }
     .hero-copy { display: grid; gap: .35rem; }
     .hero-actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+    .danger-action { background: rgba(127, 29, 29, .3); color: #fecaca; border: 1px solid rgba(248, 113, 113, .25); box-shadow: none; }
     .eyebrow { margin: 0; color: #f59e0b; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
     .muted { color: #94a3b8; }
     .meta-row { display: flex; flex-wrap: wrap; gap: .5rem; }
@@ -199,6 +239,9 @@ interface GalleryItem {
     .panel { border: 1px solid rgba(148, 163, 184, .14); border-radius: 1.25rem; padding: 1.2rem; background: linear-gradient(180deg, rgba(15, 23, 42, .94), rgba(2, 6, 23, .96)); color: #f8fafc; }
     .panel h2 { margin-top: 0; }
     .gallery-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
+    .access-card { display: flex; justify-content: space-between; gap: 1rem; align-items: center; margin-bottom: .75rem; padding: .85rem; border: 1px solid rgba(244, 114, 182, .2); border-radius: 1rem; background: rgba(76, 29, 149, .12); }
+    .access-card p { margin: .2rem 0 0; }
+    .compact-button { width: auto; }
     .gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
     .gallery-item { position: relative; display: grid; gap: .65rem; margin: 0; padding: 0; border: 0; background: transparent; text-align: left; }
     .gallery-item img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: .9rem; border: 1px solid rgba(148, 163, 184, .16); background: #020617; transition: transform .18s ease, border-color .18s ease; }
@@ -225,6 +268,8 @@ interface GalleryItem {
     @media (max-width: 720px) {
       .hero { align-items: flex-start; display: grid; }
       .hero-actions { margin-left: 0; }
+      .access-card { display: grid; }
+      .compact-button { width: 100%; }
     }
   `]
 })
@@ -242,6 +287,7 @@ export class ProfileDetailPageComponent implements OnInit {
   protected readonly isStartingConversation = signal(false);
   protected readonly isReportComposerOpen = signal(false);
   protected readonly isSubmittingReport = signal(false);
+  protected readonly isUpdatingRelationship = signal(false);
   protected readonly activeIndex = signal<number | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly actionSuccess = signal<string | null>(null);
@@ -292,11 +338,14 @@ export class ProfileDetailPageComponent implements OnInit {
         this.galleryItems.set(
           visiblePosts.flatMap(post =>
             post.assets.map(asset => ({
+              postId: post.id,
               assetId: asset.id,
               imageUrl: asset.preview_url || asset.url || '',
               locked: asset.locked,
               title: post.title,
-              description: post.description
+              description: post.description,
+              isPrivate: post.is_private,
+              accessStatus: post.access_status
             }))
           )
         );
@@ -343,6 +392,74 @@ export class ProfileDetailPageComponent implements OnInit {
         this.isStartingConversation.set(false);
       }
     });
+  }
+
+  protected toggleFavorite(): void {
+    const profile = this.profile();
+    if (!profile) return;
+    this.isUpdatingRelationship.set(true);
+    this.api.toggleFavorite(profile.user_id).subscribe({
+      next: result => {
+        this.profile.update(item => item ? { ...item, is_favorite: result.enabled } : item);
+        this.isUpdatingRelationship.set(false);
+      },
+      error: () => {
+        this.error.set('Favoriet bijwerken is niet gelukt.');
+        this.isUpdatingRelationship.set(false);
+      }
+    });
+  }
+
+  protected toggleLike(): void {
+    const profile = this.profile();
+    if (!profile) return;
+    this.isUpdatingRelationship.set(true);
+    this.api.toggleLike(profile.user_id).subscribe({
+      next: result => {
+        this.profile.update(item => item ? { ...item, is_liked: result.enabled, is_match: result.matched } : item);
+        this.actionSuccess.set(result.matched ? 'Jullie zijn een match.' : result.enabled ? 'Like opgeslagen.' : 'Like verwijderd.');
+        this.isUpdatingRelationship.set(false);
+      },
+      error: () => {
+        this.error.set('Like bijwerken is niet gelukt.');
+        this.isUpdatingRelationship.set(false);
+      }
+    });
+  }
+
+  protected blockProfile(): void {
+    const profile = this.profile();
+    if (!profile) return;
+    this.isUpdatingRelationship.set(true);
+    this.api.blockUser(profile.user_id).subscribe({
+      next: () => void this.router.navigateByUrl('/discover'),
+      error: () => {
+        this.error.set('Blokkeren is niet gelukt.');
+        this.isUpdatingRelationship.set(false);
+      }
+    });
+  }
+
+  protected privateAlbums(): Post[] {
+    return this.gallery().filter(post => post.is_private && post.access_status !== 'approved');
+  }
+
+  protected requestAccess(post: Post): void {
+    this.api.requestPostAccess(post.id).subscribe({
+      next: request => {
+        this.gallery.update(items => items.map(item => item.id === post.id ? { ...item, access_status: request.status } : item));
+        this.galleryItems.update(items => items.map(item => item.postId === post.id ? { ...item, accessStatus: request.status } : item));
+        this.actionSuccess.set('Toegangsverzoek verstuurd.');
+      },
+      error: () => this.error.set('Toegang aanvragen is niet gelukt.')
+    });
+  }
+
+  protected accessStatusLabel(value: Post['access_status']): string {
+    if (value === 'pending') return 'verzoek in behandeling';
+    if (value === 'denied') return 'eerder geweigerd';
+    if (value === 'approved') return 'toegang verleend';
+    return 'toegang vereist';
   }
 
   protected toggleReportComposer(): void {

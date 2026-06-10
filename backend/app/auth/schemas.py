@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
@@ -52,3 +53,10 @@ class PasswordResetConfirmRequest(TokenRequest):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class SessionResponse(BaseModel):
+    id: UUID
+    created_at: datetime
+    expires_at: datetime
+    current: bool

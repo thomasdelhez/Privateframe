@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import or_
+from sqlalchemy import String, cast, or_
 from sqlmodel import Session, desc, select
 
 from app.auth.models import User
@@ -15,6 +15,7 @@ from app.profiles.schemas import (
     ProfileVisitResponse,
     ProfileVisitSummaryResponse,
 )
+from app.social.service import blocked_user_ids, relationship_flags
 
 
 def make_slug(value: str) -> str:
@@ -22,19 +23,36 @@ def make_slug(value: str) -> str:
     return slug or "profiel"
 
 
-def to_profile_response(profile: Profile) -> ProfileResponse:
+def to_profile_response(
+    profile: Profile,
+    viewer: User | None = None,
+    session: Session | None = None,
+) -> ProfileResponse:
+    flags = (
+        relationship_flags(session, viewer.id, profile.user_id)
+        if viewer and session and viewer.id != profile.user_id
+        else {}
+    )
+    hide_location = viewer is not None and viewer.id != profile.user_id and not profile.show_location
+    hide_online = viewer is not None and viewer.id != profile.user_id and not profile.show_online_status
     return ProfileResponse(
         id=profile.id,
         user_id=profile.user_id,
         display_name=profile.display_name,
         slug=profile.slug,
         bio=profile.bio,
-        location_label=profile.location_label,
+        location_label=None if hide_location else profile.location_label,
         gender=profile.gender,
         age_label=profile.age_label,
-        last_active_at=profile.last_active_at,
+        interests=profile.interests,
+        discoverable=profile.discoverable,
+        show_online_status=profile.show_online_status,
+        show_location=profile.show_location,
+        register_profile_views=profile.register_profile_views,
+        last_active_at=None if hide_online else profile.last_active_at,
         created_at=profile.created_at,
         updated_at=profile.updated_at,
+        **flags,
     )
 
 
@@ -57,6 +75,11 @@ def upsert_profile(user: User, payload: ProfileUpsertRequest, session: Session) 
         profile.location_label = payload.location_label
         profile.gender = payload.gender
         profile.age_label = payload.age_label
+        profile.interests = _clean_interests(payload.interests)
+        profile.discoverable = payload.discoverable
+        profile.show_online_status = payload.show_online_status
+        profile.show_location = payload.show_location
+        profile.register_profile_views = payload.register_profile_views
         profile.slug = slug
         profile.last_active_at = datetime.now(UTC)
         profile.updated_at = datetime.now(UTC)
@@ -69,6 +92,11 @@ def upsert_profile(user: User, payload: ProfileUpsertRequest, session: Session) 
             location_label=payload.location_label,
             gender=payload.gender,
             age_label=payload.age_label,
+            interests=_clean_interests(payload.interests),
+            discoverable=payload.discoverable,
+            show_online_status=payload.show_online_status,
+            show_location=payload.show_location,
+            register_profile_views=payload.register_profile_views,
             last_active_at=datetime.now(UTC),
         )
 
@@ -108,12 +136,22 @@ def list_profiles(
     viewer_user_id: UUID | None = None,
     query: str | None = None,
     location: str | None = None,
+    age_min: int | None = None,
+    age_max: int | None = None,
+    gender: str | None = None,
+    online_only: bool = False,
+    with_photos: bool = False,
+    favorites_only: bool = False,
+    matches_only: bool = False,
     limit: int = 50,
 ) -> list[Profile]:
-    statement = select(Profile)
+    statement = select(Profile).where(Profile.discoverable.is_(True))
 
     if viewer_user_id:
         statement = statement.where(Profile.user_id != viewer_user_id)
+        blocked = blocked_user_ids(session, viewer_user_id)
+        if blocked:
+            statement = statement.where(Profile.user_id.notin_(blocked))
 
     if query:
         needle = f"%{query.lower()}%"
@@ -125,25 +163,61 @@ def list_profiles(
                 Profile.location_label.ilike(needle),
                 Profile.gender.ilike(needle),
                 Profile.age_label.ilike(needle),
+                cast(Profile.interests, String).ilike(needle),
             )
         )
 
     if location:
         statement = statement.where(Profile.location_label.ilike(f"%{location.lower()}%"))
+    if gender:
+        statement = statement.where(Profile.gender.ilike(f"%{gender.lower()}%"))
+    if online_only:
+        statement = statement.where(
+            Profile.show_online_status.is_(True),
+            Profile.last_active_at >= datetime.now(UTC) - timedelta(minutes=5),
+        )
 
-    statement = statement.order_by(desc(Profile.last_active_at), desc(Profile.created_at)).limit(limit)
-    return list(session.exec(statement).all())
+    profiles = list(session.exec(statement.order_by(desc(Profile.last_active_at), desc(Profile.created_at))).all())
+    if age_min is not None or age_max is not None:
+        profiles = [profile for profile in profiles if _age_matches(profile.age_label, age_min, age_max)]
+    if viewer_user_id and (favorites_only or matches_only):
+        profiles = [
+            profile
+            for profile in profiles
+            if (not favorites_only or relationship_flags(session, viewer_user_id, profile.user_id)["is_favorite"])
+            and (not matches_only or relationship_flags(session, viewer_user_id, profile.user_id)["is_match"])
+        ]
+    if with_photos:
+        from app.posts.models import MediaAsset, MediaPost
+
+        profiles = [
+            profile
+            for profile in profiles
+            if session.exec(
+                select(MediaAsset)
+                .join(MediaPost, MediaPost.id == MediaAsset.post_id)
+                .where(MediaPost.user_id == profile.user_id)
+            ).first()
+        ]
+
+    return profiles[:limit]
 
 
-def get_profile_by_slug(slug: str, session: Session) -> Profile:
+def get_profile_by_slug(slug: str, session: Session, viewer_user_id: UUID | None = None) -> Profile:
     profile = session.exec(select(Profile).where(Profile.slug == slug)).first()
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profiel niet gevonden")
+    if viewer_user_id and viewer_user_id != profile.user_id:
+        if not profile.discoverable or profile.user_id in blocked_user_ids(session, viewer_user_id):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profiel niet gevonden")
     return profile
 
 
 def register_profile_view(viewer: User, viewed_user_id: UUID, session: Session) -> None:
     if viewer.id == viewed_user_id:
+        return
+    viewed_profile = session.exec(select(Profile).where(Profile.user_id == viewed_user_id)).first()
+    if not viewed_profile or not viewed_profile.register_profile_views:
         return
 
     since = datetime.now(UTC) - timedelta(hours=24)
@@ -178,7 +252,26 @@ def get_profile_visits(user: User, session: Session) -> ProfileVisitSummaryRespo
         viewer_profile = None
         if show_profiles:
             profile = session.exec(select(Profile).where(Profile.user_id == visit.viewer_user_id)).first()
-            viewer_profile = to_profile_response(profile) if profile else None
+            viewer_profile = to_profile_response(profile, user, session) if profile else None
         response_items.append(ProfileVisitResponse(id=visit.id, visited_at=visit.viewed_at, profile=viewer_profile))
 
     return ProfileVisitSummaryResponse(count=len(visits), visits=response_items)
+
+
+def _clean_interests(values: list[str]) -> list[str]:
+    cleaned: list[str] = []
+    for value in values:
+        item = value.strip().lower()[:30]
+        if item and item not in cleaned:
+            cleaned.append(item)
+    return cleaned[:10]
+
+
+def _age_matches(value: str | None, minimum: int | None, maximum: int | None) -> bool:
+    if not value:
+        return False
+    match = re.search(r"\d{2}", value)
+    if not match:
+        return False
+    age = int(match.group())
+    return (minimum is None or age >= minimum) and (maximum is None or age <= maximum)

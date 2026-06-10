@@ -47,6 +47,28 @@ import { SessionService } from '../core/session.service';
             />
           </label>
 
+          <label>
+            Leeftijd vanaf
+            <input name="ageMin" [(ngModel)]="ageMin" type="number" min="18" max="99" placeholder="18" />
+          </label>
+
+          <label>
+            Leeftijd tot
+            <input name="ageMax" [(ngModel)]="ageMax" type="number" min="18" max="99" placeholder="99" />
+          </label>
+
+          <label>
+            Gender
+            <input name="gender" [(ngModel)]="gender" maxlength="80" placeholder="Bijv. vrouw" />
+          </label>
+
+          <div class="quick-filters">
+            <label><input type="checkbox" name="onlineOnly" [(ngModel)]="onlineOnly" /> Alleen online</label>
+            <label><input type="checkbox" name="withPhotos" [(ngModel)]="withPhotos" /> Met foto's</label>
+            <label><input type="checkbox" name="favoritesOnly" [(ngModel)]="favoritesOnly" /> Favorieten</label>
+            <label><input type="checkbox" name="matchesOnly" [(ngModel)]="matchesOnly" /> Matches</label>
+          </div>
+
           <div class="filter-actions">
             <button type="submit" [disabled]="isLoading()">{{ isLoading() ? 'Zoeken...' : 'Zoeken' }}</button>
             <button type="button" class="secondary" (click)="clearFilters()" [disabled]="isLoading()">Reset</button>
@@ -82,6 +104,14 @@ import { SessionService } from '../core/session.service';
                   @if (profile.age_label) {
                     <span class="pill">{{ profile.age_label }}</span>
                   }
+                  @for (interest of profile.interests; track interest) {
+                    <span class="pill interest">{{ interest }}</span>
+                  }
+                  @if (profile.is_match) {
+                    <span class="pill match">Match</span>
+                  } @else if (profile.is_favorite) {
+                    <span class="pill favorite">Favoriet</span>
+                  }
                   @if (profile.gender) {
                     <span class="pill">{{ profile.gender }}</span>
                   }
@@ -116,10 +146,13 @@ import { SessionService } from '../core/session.service';
     .secondary-link { display: inline-flex; align-items: center; padding: .78rem 1rem; border-radius: 999px; border: 1px solid rgba(148, 163, 184, .2); background: rgba(15, 23, 42, .85); color: #e2e8f0; text-decoration: none; font-weight: 700; }
     .secondary-link:hover { border-color: rgba(251, 191, 36, .45); color: #f8fafc; }
     .eyebrow { margin: 0 0 .25rem; color: #f59e0b; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
-    .filters { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; gap: 1rem; align-items: end; }
+    .filters { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; align-items: end; }
     label { display: grid; gap: .35rem; color: #cbd5e1; font-weight: 600; }
     input { width: 100%; border: 1px solid rgba(148, 163, 184, .2); border-radius: .85rem; background: rgba(15, 23, 42, .95); color: #f8fafc; padding: .85rem .95rem; }
     .filter-actions { display: flex; gap: .75rem; flex-wrap: wrap; }
+    .quick-filters { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .65rem; }
+    .quick-filters label { display: flex; align-items: center; gap: .4rem; padding: .55rem .7rem; border: 1px solid rgba(148, 163, 184, .14); border-radius: 999px; }
+    .quick-filters input { width: 1rem; height: 1rem; }
     .results { color: #94a3b8; margin: 0; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
     .tile { display: grid; gap: 1rem; padding: 1.1rem; border: 1px solid rgba(148, 163, 184, .14); border-radius: 1.25rem; background: linear-gradient(180deg, rgba(15, 23, 42, .95), rgba(2, 6, 23, .98)); color: #f8fafc; text-decoration: none; transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease; box-shadow: 0 16px 36px rgba(0, 0, 0, .24); }
@@ -130,6 +163,9 @@ import { SessionService } from '../core/session.service';
     .muted { color: #94a3b8; margin: .15rem 0 0; }
     .meta-row { display: flex; flex-wrap: wrap; gap: .5rem; }
     .pill { border-radius: 999px; background: rgba(148, 163, 184, .12); border: 1px solid rgba(148, 163, 184, .14); color: #e2e8f0; padding: .3rem .7rem; font-size: .92rem; font-weight: 700; }
+    .pill.match { color: #f9a8d4; border-color: rgba(244, 114, 182, .35); }
+    .pill.favorite { color: #fde68a; }
+    .pill.interest { font-weight: 500; }
     .bio { margin: 0; color: #cbd5e1; line-height: 1.5; }
     .tile-footer { display: flex; justify-content: space-between; gap: .75rem; align-items: center; color: #94a3b8; font-size: .95rem; }
     .link-label { color: #fbbf24; font-weight: 700; }
@@ -151,6 +187,13 @@ export class DiscoverPageComponent implements OnInit {
 
   protected query = '';
   protected location = '';
+  protected ageMin: number | null = null;
+  protected ageMax: number | null = null;
+  protected gender = '';
+  protected onlineOnly = false;
+  protected withPhotos = false;
+  protected favoritesOnly = false;
+  protected matchesOnly = false;
 
   public ngOnInit(): void {
     if (this.session.isLoggedIn()) {
@@ -164,6 +207,13 @@ export class DiscoverPageComponent implements OnInit {
     this.api.getProfiles({
       q: this.query.trim() || undefined,
       location: this.location.trim() || undefined,
+      ageMin: this.ageMin || undefined,
+      ageMax: this.ageMax || undefined,
+      gender: this.gender.trim() || undefined,
+      onlineOnly: this.onlineOnly,
+      withPhotos: this.withPhotos,
+      favoritesOnly: this.favoritesOnly,
+      matchesOnly: this.matchesOnly,
       limit: 50
     }).subscribe({
       next: profiles => {
@@ -180,6 +230,13 @@ export class DiscoverPageComponent implements OnInit {
   protected clearFilters(): void {
     this.query = '';
     this.location = '';
+    this.ageMin = null;
+    this.ageMax = null;
+    this.gender = '';
+    this.onlineOnly = false;
+    this.withPhotos = false;
+    this.favoritesOnly = false;
+    this.matchesOnly = false;
     this.load();
   }
 

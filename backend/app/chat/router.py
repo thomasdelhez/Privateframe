@@ -9,6 +9,8 @@ from app.auth.dependencies import PremiumUserDep, SessionDep, get_active_user_by
 from app.chat.models import Conversation, Message
 from app.chat.realtime import chat_realtime_hub
 from app.core.enums import ConversationStatus, MessageStatus, UserRole
+from app.profiles.models import UserBlock
+from app.social.service import block_between
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -129,6 +131,8 @@ async def create_conversation(
 ) -> dict:
     if other_user_id == user.id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Je kunt geen gesprek met jezelf starten")
+    if block_between(session, user.id, other_user_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chat is niet beschikbaar")
 
     existing = session.exec(
         select(Conversation).where(
@@ -272,6 +276,9 @@ async def block_conversation(conversation_id: UUID, user: PremiumUserDep, sessio
     if not conversation or user.id not in [conversation.user_a_id, conversation.user_b_id]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Gesprek niet gevonden")
     conversation.status = ConversationStatus.BLOCKED
+    other_user_id = conversation.user_b_id if conversation.user_a_id == user.id else conversation.user_a_id
+    if not block_between(session, user.id, other_user_id):
+        session.add(UserBlock(blocker_user_id=user.id, blocked_user_id=other_user_id))
     session.add(conversation)
     session.commit()
     session.refresh(conversation)
@@ -284,6 +291,17 @@ async def unblock_conversation(conversation_id: UUID, user: PremiumUserDep, sess
     conversation = session.get(Conversation, conversation_id)
     if not conversation or user.id not in [conversation.user_a_id, conversation.user_b_id]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Gesprek niet gevonden")
+    other_user_id = conversation.user_b_id if conversation.user_a_id == user.id else conversation.user_a_id
+    block = session.exec(
+        select(UserBlock).where(
+            UserBlock.blocker_user_id == user.id,
+            UserBlock.blocked_user_id == other_user_id,
+        )
+    ).first()
+    if block:
+        session.delete(block)
+    if block_between(session, user.id, other_user_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Alleen de blokkeerder kan deblokkeren")
     conversation.status = ConversationStatus.ACTIVE
     conversation.updated_at = datetime.now(UTC)
     session.add(conversation)

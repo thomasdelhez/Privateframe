@@ -1,6 +1,10 @@
-from fastapi import APIRouter, Request, status
+from uuid import UUID
+
+from fastapi import APIRouter, HTTPException, Request, status
+from sqlmodel import select
 
 from app.auth.dependencies import CurrentSessionDep, CurrentUserDep, SessionDep, VerifiedUserDep
+from app.auth.models import UserSession
 from app.auth.schemas import (
     AgeConfirmationResponse,
     LoginRequest,
@@ -10,6 +14,7 @@ from app.auth.schemas import (
     PasswordResetRequest,
     RegisterRequest,
     ResendVerificationRequest,
+    SessionResponse,
     TokenRequest,
     UserResponse,
 )
@@ -49,6 +54,43 @@ def login(payload: LoginRequest, request: Request, session: SessionDep) -> Login
 def logout(user_session: CurrentSessionDep, session: SessionDep) -> MessageResponse:
     revoke_user_session(user_session, session)
     return MessageResponse(message="Uitgelogd")
+
+
+@router.get("/sessions", response_model=list[SessionResponse])
+def list_sessions(
+    user: CurrentUserDep,
+    current_session: CurrentSessionDep,
+    session: SessionDep,
+) -> list[SessionResponse]:
+    items = session.exec(
+        select(UserSession)
+        .where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None))
+        .order_by(UserSession.created_at.desc())
+    ).all()
+    return [
+        SessionResponse(
+            id=item.id,
+            created_at=item.created_at,
+            expires_at=item.expires_at,
+            current=item.id == current_session.id,
+        )
+        for item in items
+    ]
+
+
+@router.delete("/sessions/{session_id}", response_model=MessageResponse)
+def revoke_session(
+    session_id: UUID,
+    user: CurrentUserDep,
+    current_session: CurrentSessionDep,
+    session: SessionDep,
+) -> MessageResponse:
+    item = session.get(UserSession, session_id)
+    if not item or item.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sessie niet gevonden")
+    revoke_user_session(item, session)
+    message = "Huidige sessie ingetrokken" if item.id == current_session.id else "Sessie ingetrokken"
+    return MessageResponse(message=message)
 
 
 @router.get("/me", response_model=UserResponse)
