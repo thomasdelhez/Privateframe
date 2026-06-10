@@ -47,24 +47,72 @@ interface GalleryItem {
           </div>
           <div class="hero-actions">
             @if (!isOwnProfile()) {
-              <button type="button" class="secondary" (click)="toggleFavorite()" [disabled]="isUpdatingRelationship()">
-                {{ item.is_favorite ? 'Verwijder favoriet' : 'Bewaar favoriet' }}
+              <button
+                type="button"
+                class="profile-action"
+                [class.active]="item.is_favorite"
+                [attr.aria-label]="item.is_favorite ? 'Verwijder uit favorieten' : 'Bewaar als favoriet'"
+                [attr.data-label]="item.is_favorite ? 'Favoriet verwijderen' : 'Favoriet'"
+                [title]="item.is_favorite ? 'Verwijder uit favorieten' : 'Bewaar als favoriet'"
+                (click)="toggleFavorite()"
+                [disabled]="isUpdatingRelationship()">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m12 3 2.75 5.57 6.15.9-4.45 4.33 1.05 6.12L12 17.03l-5.5 2.89 1.05-6.12L3.1 9.47l6.15-.9L12 3Z"></path>
+                </svg>
               </button>
-              <button type="button" (click)="toggleLike()" [disabled]="isUpdatingRelationship()">
-                {{ item.is_liked ? 'Like verwijderen' : 'Like profiel' }}
+              <button
+                type="button"
+                class="profile-action primary-action"
+                [class.active]="item.is_liked"
+                [attr.aria-label]="item.is_liked ? 'Like verwijderen' : 'Like profiel'"
+                [attr.data-label]="item.is_liked ? 'Like verwijderen' : 'Like'"
+                [title]="item.is_liked ? 'Like verwijderen' : 'Like profiel'"
+                (click)="toggleLike()"
+                [disabled]="isUpdatingRelationship()">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"></path>
+                </svg>
               </button>
             }
             @if (!isOwnProfile() && session.isPremium()) {
-              <button type="button" (click)="startConversation()" [disabled]="isStartingConversation()">
-                {{ isStartingConversation() ? 'Openen...' : 'Chat starten' }}
+              <button
+                type="button"
+                class="profile-action primary-action"
+                aria-label="Chat starten"
+                data-label="Chat"
+                title="Chat starten"
+                (click)="startConversation()"
+                [disabled]="isStartingConversation()">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"></path>
+                </svg>
               </button>
             }
             @if (!isOwnProfile()) {
-              <button type="button" class="secondary" (click)="toggleReportComposer()">
-                {{ isReportComposerOpen() ? 'Annuleren' : 'Profiel melden' }}
+              <button
+                type="button"
+                class="profile-action"
+                [class.active]="isReportComposerOpen()"
+                [attr.aria-label]="isReportComposerOpen() ? 'Melding annuleren' : 'Profiel melden'"
+                [attr.data-label]="isReportComposerOpen() ? 'Annuleren' : 'Melden'"
+                [title]="isReportComposerOpen() ? 'Melding annuleren' : 'Profiel melden'"
+                (click)="toggleReportComposer()">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 21V4m0 0h11l-1 4 4 2-2 5H4"></path>
+                </svg>
               </button>
-              <button type="button" class="danger-action" (click)="blockProfile()" [disabled]="isUpdatingRelationship()">
-                Blokkeren
+              <button
+                type="button"
+                class="profile-action danger-action"
+                aria-label="Profiel blokkeren"
+                data-label="Blokkeren"
+                title="Profiel blokkeren"
+                (click)="blockProfile()"
+                [disabled]="isUpdatingRelationship()">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9"></circle>
+                  <path d="m5.65 5.65 12.7 12.7"></path>
+                </svg>
               </button>
             }
           </div>
@@ -229,8 +277,19 @@ interface GalleryItem {
     .hero { display: flex; gap: 1rem; align-items: center; padding: 1.5rem; border-radius: 1.5rem; background: linear-gradient(135deg, rgba(15, 23, 42, .98), rgba(30, 41, 59, .92) 55%, rgba(9, 9, 11, .94)); border: 1px solid rgba(148, 163, 184, .14); color: #f8fafc; }
     .avatar { display: grid; place-items: center; width: 4.75rem; height: 4.75rem; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #ec4899 50%, #38bdf8); color: white; font-size: 1.35rem; font-weight: 900; flex: 0 0 auto; }
     .hero-copy { display: grid; gap: .35rem; }
-    .hero-actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
-    .danger-action { background: rgba(127, 29, 29, .3); color: #fecaca; border: 1px solid rgba(248, 113, 113, .25); box-shadow: none; }
+    .hero-actions { position: relative; margin-left: auto; display: flex; flex-wrap: nowrap; gap: .55rem; align-items: center; }
+    .profile-action { position: relative; width: 3rem; min-width: 3rem; min-height: 3rem; height: 3rem; padding: 0; border: 1px solid rgba(148, 163, 184, .25); background: rgba(15, 23, 42, .9); color: #e2e8f0; box-shadow: none; }
+    .profile-action svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+    .profile-action:hover { border-color: rgba(244, 114, 182, .55); color: #f9a8d4; }
+    .profile-action.primary-action { background: linear-gradient(135deg, rgba(245, 158, 11, .2), rgba(244, 114, 182, .2)); }
+    .profile-action.active { border-color: rgba(244, 114, 182, .7); background: linear-gradient(135deg, #f59e0b, #f472b6); color: #111827; }
+    .profile-action.active svg { fill: currentColor; }
+    .profile-action.danger-action { background: rgba(127, 29, 29, .3); color: #fecaca; border-color: rgba(248, 113, 113, .25); }
+    .profile-action.danger-action:hover { border-color: rgba(248, 113, 113, .55); color: #fee2e2; }
+    @media (hover: hover) {
+      .profile-action::after { content: attr(data-label); position: absolute; z-index: 5; top: calc(100% + .55rem); left: 50%; transform: translateX(-50%); pointer-events: none; opacity: 0; padding: .38rem .55rem; border-radius: .5rem; background: #020617; border: 1px solid rgba(148, 163, 184, .2); color: #f8fafc; font-size: .75rem; font-weight: 700; white-space: nowrap; transition: opacity .14s ease; }
+      .profile-action:hover::after, .profile-action:focus-visible::after { opacity: 1; }
+    }
     .eyebrow { margin: 0; color: #f59e0b; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
     .muted { color: #94a3b8; }
     .meta-row { display: flex; flex-wrap: wrap; gap: .5rem; }
@@ -267,7 +326,8 @@ interface GalleryItem {
     }
     @media (max-width: 720px) {
       .hero { align-items: flex-start; display: grid; }
-      .hero-actions { margin-left: 0; }
+      .hero-actions { width: 100%; margin-left: 0; justify-content: flex-start; }
+      .profile-action { flex: 1 1 0; width: auto; min-width: 2.75rem; max-width: 3.5rem; }
       .access-card { display: grid; }
       .compact-button { width: 100%; }
     }
