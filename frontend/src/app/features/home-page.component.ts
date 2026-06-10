@@ -133,7 +133,9 @@ interface PhotoCard {
                   <a class="active-profile" [routerLink]="['/discover', profile.slug]">
                     <div class="active-avatar">
                       @if (profilePhoto(profile); as photo) {
-                        <img [src]="photo" alt="Foto van {{ profile.display_name }}" />
+                        <span class="active-avatar-photo">
+                          <img [src]="photo" alt="Foto van {{ profile.display_name }}" />
+                        </span>
                       } @else {
                         <span>{{ initials(profile.display_name) }}</span>
                       }
@@ -274,8 +276,9 @@ interface PhotoCard {
     .active-strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(112px, 132px); gap: .8rem; overflow-x: auto; padding: .2rem .1rem .75rem; scrollbar-width: thin; }
     .active-profile { display: grid; justify-items: center; gap: .4rem; padding: .8rem .55rem; border-radius: 1.1rem; background: rgba(15, 23, 42, .66); border: 1px solid rgba(148, 163, 184, .12); color: #f8fafc; text-align: center; text-decoration: none; }
     .active-profile > span { color: #94a3b8; font-size: .78rem; }
-    .active-avatar { position: relative; display: grid; place-items: center; width: 4.4rem; height: 4.4rem; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #ec4899 52%, #38bdf8); font-weight: 900; overflow: visible; }
-    .active-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+    .active-avatar { position: relative; display: grid; place-items: center; width: 4.4rem; height: 4.4rem; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #ec4899 52%, #38bdf8); font-weight: 900; }
+    .active-avatar-photo { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }
+    .active-avatar-photo img { display: block; width: 100%; max-width: none; height: 100%; object-fit: cover; object-position: center; }
     .active-avatar i { position: absolute; right: .1rem; bottom: .15rem; width: .9rem; height: .9rem; border: 3px solid #0b101a; border-radius: 999px; background: #64748b; }
     .active-avatar i.online { background: #22c55e; }
     .profile-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
