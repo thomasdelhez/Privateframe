@@ -11,6 +11,7 @@ from app.profiles.service import (
     list_profiles,
     register_profile_view,
     to_profile_response,
+    touch_profile_activity,
     upsert_profile,
 )
 
@@ -25,6 +26,7 @@ def discover_profiles(
     location: Annotated[str | None, Query(max_length=120)] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ) -> list[ProfileResponse]:
+    touch_profile_activity(user, session)
     return [
         to_profile_response(profile)
         for profile in list_profiles(

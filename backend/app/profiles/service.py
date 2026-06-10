@@ -85,6 +85,23 @@ def get_my_profile(user: User, session: Session) -> Profile:
     return profile
 
 
+def touch_profile_activity(user: User, session: Session) -> None:
+    profile = session.exec(select(Profile).where(Profile.user_id == user.id)).first()
+    if not profile:
+        return
+
+    now = datetime.now(UTC)
+    last_active_at = profile.last_active_at
+    if last_active_at and last_active_at.tzinfo is None:
+        last_active_at = last_active_at.replace(tzinfo=UTC)
+    if last_active_at and now - last_active_at < timedelta(minutes=1):
+        return
+
+    profile.last_active_at = now
+    session.add(profile)
+    session.commit()
+
+
 def list_profiles(
     session: Session,
     *,
