@@ -94,10 +94,10 @@ import { SessionService } from '../core/session.service';
                   </label>
 
                   <div class="checks">
-                    <label><input type="checkbox" name="ruleAge" [(ngModel)]="ruleAge" /> 18+ bevestigd</label>
-                    <label><input type="checkbox" name="ruleRights" [(ngModel)]="ruleRights" /> Rechten zijn van mij</label>
-                    <label><input type="checkbox" name="ruleSafe" [(ngModel)]="ruleSafe" /> Geen minderjarigen</label>
-                    <label><input type="checkbox" name="rulePermission" [(ngModel)]="rulePermission" /> Toestemming bevestigd</label>
+                    <label><input type="checkbox" name="ruleAge" [(ngModel)]="ruleAge" /><span>18+ bevestigd</span></label>
+                    <label><input type="checkbox" name="ruleRights" [(ngModel)]="ruleRights" /><span>Rechten zijn van mij</span></label>
+                    <label><input type="checkbox" name="ruleSafe" [(ngModel)]="ruleSafe" /><span>Geen minderjarigen</span></label>
+                    <label><input type="checkbox" name="rulePermission" [(ngModel)]="rulePermission" /><span>Toestemming bevestigd</span></label>
                   </div>
 
                   <button type="submit" [disabled]="isSavingPost() || !canCreatePost()">
@@ -271,8 +271,10 @@ import { SessionService } from '../core/session.service';
     input, textarea { width: 100%; border: 1px solid rgba(148, 163, 184, .2); border-radius: .85rem; background: rgba(15, 23, 42, .95); color: #f8fafc; padding: .85rem .95rem; }
     textarea { resize: vertical; }
     .duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
-    .checks { display: grid; gap: .5rem; }
-    .checks label { display: flex; align-items: center; gap: .5rem; }
+    .checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+    .checks label { display: flex; align-items: center; gap: .65rem; min-width: 0; padding: .7rem .8rem; border: 1px solid rgba(148, 163, 184, .14); border-radius: .8rem; background: rgba(15, 23, 42, .58); cursor: pointer; }
+    .checks input[type="checkbox"] { flex: 0 0 auto; width: 1.2rem; height: 1.2rem; margin: 0; padding: 0; accent-color: #ec4899; }
+    .checks span { min-width: 0; line-height: 1.35; }
     .preview-card { display: flex; gap: .9rem; align-items: center; }
     .avatar { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #ec4899 50%, #38bdf8); color: white; font-weight: 900; flex: 0 0 auto; box-shadow: 0 10px 24px rgba(236, 72, 153, .18); }
     .muted { color: #94a3b8; }
@@ -303,7 +305,7 @@ import { SessionService } from '../core/session.service';
     }
     @media (max-width: 720px) {
       .title-row, .gallery-card-head, .activity-item { display: grid; }
-      .duo { grid-template-columns: 1fr; }
+      .duo, .checks { grid-template-columns: 1fr; }
     }
   `]
 })
