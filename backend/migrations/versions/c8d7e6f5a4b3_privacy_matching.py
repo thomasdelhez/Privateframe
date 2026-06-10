@@ -8,7 +8,6 @@ Create Date: 2026-06-10 13:20:00
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-import sqlmodel
 from alembic import op
 
 revision: str = "c8d7e6f5a4b3"
@@ -22,7 +21,10 @@ def upgrade() -> None:
     op.add_column("profile", sa.Column("discoverable", sa.Boolean(), nullable=False, server_default=sa.true()))
     op.add_column("profile", sa.Column("show_online_status", sa.Boolean(), nullable=False, server_default=sa.true()))
     op.add_column("profile", sa.Column("show_location", sa.Boolean(), nullable=False, server_default=sa.true()))
-    op.add_column("profile", sa.Column("register_profile_views", sa.Boolean(), nullable=False, server_default=sa.true()))
+    op.add_column(
+        "profile",
+        sa.Column("register_profile_views", sa.Boolean(), nullable=False, server_default=sa.true()),
+    )
     op.execute(sa.text("UPDATE profile SET interests = '[]' WHERE interests IS NULL"))
     with op.batch_alter_table("profile") as batch:
         batch.alter_column("interests", existing_type=sa.JSON(), nullable=False)
